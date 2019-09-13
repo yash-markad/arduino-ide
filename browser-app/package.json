@@ -19,6 +19,7 @@
     "@theia/terminal": "next",
     "@theia/workspace": "next",
     "arduino-ide-extension": "0.1.2",
+    "arduino-create-extension": "0.1.2",
     "arduino-debugger-extension": "0.1.2"
   },
   "devDependencies": {

@@ -1,6 +1,5 @@
 import { MAIN_MENU_BAR, MenuContribution, MenuModelRegistry, SelectionService, ILogger } from '@theia/core';
 import {
-    ContextMenuRenderer,
     FrontendApplication, FrontendApplicationContribution,
     OpenerService, StatusBar, StatusBarAlignment
 } from '@theia/core/lib/browser';
@@ -72,9 +71,6 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
 
     @inject(EditorManager)
     protected readonly editorManager: EditorManager;
-
-    @inject(ContextMenuRenderer)
-    protected readonly contextMenuRenderer: ContextMenuRenderer;
 
     @inject(FileDialogService)
     protected readonly fileDialogService: FileDialogService;

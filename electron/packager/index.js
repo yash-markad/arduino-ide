@@ -45,6 +45,7 @@
 
     const extensions = [
         'arduino-ide-extension',
+        'arduino-create-extension',
         'arduino-debugger-extension',
     ];
     const allDependencies = [
