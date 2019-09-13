@@ -44,7 +44,7 @@
     // Copy the following items into the `working-copy` folder. Make sure to reuse the `yarn.lock`. |
     //----------------------------------------------------------------------------------------------+
     mkdir('-p', path('..', workingCopy));
-    for (const name of ['arduino-ide-extension', 'arduino-debugger-extension', 'electron-app', 'yarn.lock', 'package.json', 'lerna.json']) {
+    for (const name of ['arduino-ide-extension', 'arduino-debugger-extension', 'arduino-create-extension', 'electron-app', 'yarn.lock', 'package.json', 'lerna.json']) {
         cp('-rf', path(rootPath, name), path('..', workingCopy));
     }
 
@@ -78,9 +78,11 @@
     // Change the regular NPM dependencies to `local-paths`, so that we can build them without any NPM registries. |
     //-------------------------------------------------------------------------------------------------------------+
     // @ts-ignore
-    pkg = require('../working-copy/arduino-debugger-extension/package.json');
-    pkg.dependencies['arduino-ide-extension'] = 'file:../arduino-ide-extension';
-    fs.writeFileSync(path('..', workingCopy, 'arduino-debugger-extension', 'package.json'), JSON.stringify(pkg, null, 2));
+    for (const extension of ['arduino-debugger-extension', 'arduino-create-extension']) {
+        pkg = require(`../working-copy/${extension}/package.json`);
+        pkg.dependencies['arduino-ide-extension'] = 'file:../arduino-ide-extension';
+        fs.writeFileSync(path('..', workingCopy, extension, 'package.json'), JSON.stringify(pkg, null, 2));
+    }
 
     //------------------------------------------------------------------------------------+
     // Merge the `working-copy/package.json` with `electron/build/template-package.json`. |

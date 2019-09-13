@@ -5,7 +5,8 @@
   "author": "Arduino SA",
   "dependencies": {
     "arduino-ide-extension": "file:../working-copy/arduino-ide-extension",
-    "arduino-debugger-extension": "file:../working-copy/arduino-debugger-extension"
+    "arduino-debugger-extension": "file:../working-copy/arduino-debugger-extension",
+    "arduino-create-extension": "file:../working-copy/arduino-create-extension"
   },
   "resolutions": {
     "**/fs-extra": "^4.0.3"

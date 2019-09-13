@@ -7,4 +7,6 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(ElectronArduinoMenuContribution).toSelf().inSingletonScope();
     bind(MainMenuManager).toService(ElectronArduinoMenuContribution);
     rebind(ElectronMenuContribution).to(ElectronArduinoMenuContribution);
-});
+
+    // bind(BrowserMainMenuFactory).toSelf();
+})

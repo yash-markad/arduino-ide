@@ -13,9 +13,10 @@ import { SelectionService, MenuContribution, MenuModelRegistry, MAIN_MENU_BAR, M
 import { ArduinoToolbar } from './toolbar/arduino-toolbar';
 import { EditorManager, EditorMainMenu } from '@theia/editor/lib/browser';
 import {
-    ContextMenuRenderer, Widget, StatusBar, StatusBarAlignment, FrontendApplicationContribution,
+    Widget, StatusBar, StatusBarAlignment, FrontendApplicationContribution,
     FrontendApplication, KeybindingContribution, KeybindingRegistry, OpenerService, open
 } from '@theia/core/lib/browser';
+import { BrowserContextMenuRenderer } from '@theia/core/src/browser/menu/browser-context-menu-renderer';
 import { OpenFileDialogProps, FileDialogService } from '@theia/filesystem/lib/browser/file-dialog';
 import { FileSystem, FileStat } from '@theia/filesystem/lib/common';
 import { CommonCommands, CommonMenus } from '@theia/core/lib/browser/common-frontend-contribution';
@@ -86,8 +87,11 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
     @inject(EditorManager)
     protected readonly editorManager: EditorManager;
 
-    @inject(ContextMenuRenderer)
-    protected readonly contextMenuRenderer: ContextMenuRenderer;
+    /**
+     * We inject this, as we do not want to see the native electron context menu, but the browser one.
+     */
+    @inject(BrowserContextMenuRenderer)
+    protected readonly contextMenuRenderer: BrowserContextMenuRenderer;
 
     @inject(FileDialogService)
     protected readonly fileDialogService: FileDialogService;
@@ -332,8 +336,12 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
         registry.registerCommand(ArduinoCommands.NEW_SKETCH, new WorkspaceRootUriAwareCommandHandler(this.workspaceService, this.selectionService, {
             execute: async uri => {
                 try {
-                    // hack: sometimes we don't get the workspace root, but the currently active file: correct for that
-                    if (uri.path.ext !== "") {
+                    const config = await this.configService.getConfiguration();
+                    const sketchDirStat = await this.fileSystem.getFileStat(config.sketchDirUri);
+                    if (!!sketchDirStat) {
+                        uri = new URI(sketchDirStat.uri);
+                    } else if (uri.path.ext !== "") {
+                        // hack: sometimes we don't get the workspace root, but the currently active file: correct for that
                         uri = uri.withPath(uri.path.dir.dir);
                     }
 

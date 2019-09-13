@@ -38,6 +38,7 @@ jobs:
     displayName: Test
   - bash: |
       ./electron/packager/conf-node-gyp.sh
+      yarn policies set-version 1.18
       yarn --cwd ./electron/packager/
       yarn --cwd ./electron/packager/ package
     env:

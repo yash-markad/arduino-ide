@@ -78,7 +78,6 @@ import { CoreServiceClientImpl } from './core-service-client-impl';
 import { BoardsDetailsMenuUpdater } from './boards/boards-details-menu-updater';
 import { BoardsConfigStore } from './boards/boards-config-store';
 import { ILogger } from '@theia/core';
-
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
 MonacoThemingService.register({
