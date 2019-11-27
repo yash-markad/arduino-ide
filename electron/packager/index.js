@@ -44,7 +44,7 @@
     // Copy the following items into the `working-copy` folder. Make sure to reuse the `yarn.lock`. |
     //----------------------------------------------------------------------------------------------+
     mkdir('-p', path('..', workingCopy));
-    for (const name of ['arduino-ide-extension', 'arduino-debugger-extension', 'arduino-create-extension', 'electron-app', 'yarn.lock', 'package.json', 'lerna.json']) {
+    for (const name of ['arduino-ide-extension', 'arduino-debugger-extension', 'arduino-create-extension', 'electron-app', 'yarn.lock', 'package.json', 'lerna.json', 'configs']) {
         cp('-rf', path(rootPath, name), path('..', workingCopy));
     }
 

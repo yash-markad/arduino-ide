@@ -33,15 +33,15 @@ export class TokenStore {
 
     getToken(): Token | undefined {
         const tokenStr = localStorage.getItem('arduino_create_token');
-        if(tokenStr){
+        if (tokenStr) {
             const token = JSON.parse(tokenStr);
-            if(Token.is(token)){
+            if (Token.is(token)) {
                 return token;
             }
         }
     }
 
-    deleteToken():void {
+    deleteToken(): void {
         localStorage.removeItem('arduino_create_token');
     }
 
@@ -55,7 +55,7 @@ export class TokenStore {
     get expired(): boolean {
         const token = this.getToken();
         const updatedAt = localStorage.getItem('arduino_create_token_updated_at');
-        return !token || !updatedAt || (parseInt(updatedAt) + token.expires_in <= Date.now() / 1000);
+        return !token || !updatedAt || (parseInt(updatedAt, 10) + token.expires_in <= Date.now() / 1000);
     }
 
 }
@@ -80,4 +80,3 @@ export class AuthService {
     }
 
 }
-

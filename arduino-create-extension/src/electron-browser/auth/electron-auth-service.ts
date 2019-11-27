@@ -133,7 +133,7 @@ export class ElectronAuthService extends AuthService {
         const urlEncode = (str: string) => str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
         const decode = (buffer: Uint8Array | number[]) => {
             let decodedString = "";
-            for (var i = 0; i < buffer.length; i++) {
+            for (let i = 0; i < buffer.length; i++) {
                 decodedString += String.fromCharCode(buffer[i]);
             }
             return decodedString;

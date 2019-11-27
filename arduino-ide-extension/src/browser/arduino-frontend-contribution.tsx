@@ -16,7 +16,7 @@ import {
     Widget, StatusBar, StatusBarAlignment, FrontendApplicationContribution,
     FrontendApplication, KeybindingContribution, KeybindingRegistry, OpenerService, open
 } from '@theia/core/lib/browser';
-import { BrowserContextMenuRenderer } from '@theia/core/src/browser/menu/browser-context-menu-renderer';
+import { BrowserContextMenuRenderer } from '@theia/core/lib/browser/menu/browser-context-menu-renderer';
 import { OpenFileDialogProps, FileDialogService } from '@theia/filesystem/lib/browser/file-dialog';
 import { FileSystem, FileStat } from '@theia/filesystem/lib/common';
 import { CommonCommands, CommonMenus } from '@theia/core/lib/browser/common-frontend-contribution';

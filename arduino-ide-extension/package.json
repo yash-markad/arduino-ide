@@ -2,6 +2,8 @@
   "name": "arduino-ide-extension",
   "version": "0.0.7",
   "description": "An extension for Theia building the Arduino IDE",
+  "repository": "https://github.com/bcmi-labs/arduino-editor.git",
+  "author": "Arduino SA",
   "license": "MIT",
   "engines": {
     "node": ">=10.11.0 <12"
@@ -12,7 +14,7 @@
     "download-cli": "node ./scripts/download-cli.js",
     "download-ls": "node ./scripts/download-ls.js",
     "generate-protocol": "node ./scripts/generate-protocol.js",
-    "lint": "tslint -c ./tslint.json --project ./tsconfig.json",
+    "lint": "tslint -c ../configs/tslint.json --project ./tsconfig.json",
     "build": "tsc && ncp ./src/node/cli-protocol/ ./lib/node/cli-protocol/ && yarn lint",
     "watch": "tsc -w",
     "test": "mocha \"./lib/test/**/*.test.js\"",

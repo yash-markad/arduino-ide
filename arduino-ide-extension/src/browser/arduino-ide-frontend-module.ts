@@ -78,6 +78,7 @@ import { CoreServiceClientImpl } from './core-service-client-impl';
 import { BoardsDetailsMenuUpdater } from './boards/boards-details-menu-updater';
 import { BoardsConfigStore } from './boards/boards-config-store';
 import { ILogger } from '@theia/core';
+import { BrowserContextMenuRenderer } from '@theia/core/lib/browser/menu/browser-context-menu-renderer';
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
 MonacoThemingService.register({
@@ -292,4 +293,6 @@ export default new ContainerModule((bind: interfaces.Bind, unbind: interfaces.Un
         WebSocketConnectionProvider.createProxy(context.container, ArduinoDaemonPath, client);
         return client;
     }).inSingletonScope();
+    // We need this explicit binding as we want to show the browser context menu for the `Arduino Toolbar` even in electron.
+    bind(BrowserContextMenuRenderer).toSelf();
 });
