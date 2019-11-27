@@ -27,9 +27,9 @@
     "download:plugins": "theia download:plugins"
   },
   "workspaces": [
-    "arduino-create-extension",
     "arduino-ide-extension",
     "arduino-debugger-extension",
+    "arduino-create-extension",
     "electron-app",
     "browser-app"
   ],

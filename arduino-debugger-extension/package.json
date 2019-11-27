@@ -2,6 +2,8 @@
   "name": "arduino-debugger-extension",
   "version": "0.1.2",
   "description": "An extension for debugging Arduino programs",
+  "repository": "https://github.com/bcmi-labs/arduino-editor.git",
+  "author": "Arduino SA",
   "license": "MIT",
   "dependencies": {
     "@theia/debug": "next",
@@ -13,7 +15,7 @@
   "scripts": {
     "prepare": "yarn run clean && yarn run build",
     "clean": "rimraf lib",
-    "lint": "tslint -c ./tslint.json --project ./tsconfig.json",
+    "lint": "tslint -c ../configs/tslint.json --project ./tsconfig.json",
     "build": "tsc && yarn lint",
     "watch": "tsc -w"
   },

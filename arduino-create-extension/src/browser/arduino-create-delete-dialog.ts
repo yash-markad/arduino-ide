@@ -39,7 +39,7 @@ export class ArduinoCreateDeleteDialog extends AbstractDialog<ArduinoDeleteActio
     onAfterAttach(msg: Message) {
         super.onAfterAttach(msg);
 
-        if(this.keepButton && this.deleteButton){
+        if (this.keepButton && this.deleteButton) {
             this.addEventListener(this.keepButton, 'click', () => {
                 this.type = 'keep';
                 this.accept();

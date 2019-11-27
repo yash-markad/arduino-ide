@@ -11,7 +11,7 @@ export class ArduinoCreateAPI {
     @inject(AuthService)
     protected authService: AuthService;
 
-    async run<T>(req: ArduinoCreateAPIRequestWithPayload<T> | ArduinoCreateAPIRequestWithoutPayload<T>): Promise<T> {
+    protected async run<T>(req: ArduinoCreateAPIRequestWithPayload<T> | ArduinoCreateAPIRequestWithoutPayload<T>): Promise<T> {
         const authToken = await this.authService.getToken();
         const param: { [key: string]: any } = {
             method: req.method,
@@ -103,7 +103,7 @@ export class ArduinoCreateAPI {
     async writeFile(filePath: string, data: string): Promise<void> {
         const sketchPath = filePath.substr(0, filePath.lastIndexOf('/'));
         const before = await this.listFiles(sketchPath);
-        
+
         let tries = 0;
         const time = Date.now();
         while (true) {

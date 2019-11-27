@@ -1,17 +1,24 @@
 {
   "name": "arduino-create-extension",
+  "version": "0.1.2",
+  "description": "An extension for the Arduino Create service",
+  "repository": "https://github.com/bcmi-labs/arduino-editor.git",
+  "author": "Arduino SA",
+  "license": "MIT",
+  "engines": {
+    "node": ">=10.11.0 <12"
+  },
   "keywords": [
     "theia-extension"
   ],
-  "version": "0.1.2",
   "files": [
     "lib",
     "src"
   ],
   "dependencies": {
-    "@types/auth0-js": "8.11.2",
     "@theia/core": "next",
     "@theia/electron": "next",
+    "@types/auth0-js": "8.11.2",
     "arduino-ide-extension": "0.0.7",
     "auth0-js": "9.11.3",
     "hash.js": "^1.1.7"
@@ -19,7 +26,8 @@
   "scripts": {
     "prepare": "yarn run clean && yarn run build",
     "clean": "rimraf lib",
-    "build": "tsc",
+    "lint": "tslint -c ../configs/tslint.json --project ./tsconfig.json",
+    "build": "tsc && yarn lint",
     "watch": "tsc -w"
   },
   "theia": {

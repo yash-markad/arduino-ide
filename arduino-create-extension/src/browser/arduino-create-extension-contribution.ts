@@ -65,7 +65,7 @@ export class ArduinoCreateExtensionFrontendContribution extends ArduinoFrontendC
         this.initializeMenu();
     }
 
-    initializeMenu(){
+    initializeMenu() {
         if (this.authService.isAuthorized) {
             this.menuRegistry.unregisterMenuAction(ArduinoCreateCommands.OPEN_CREATE_LOGIN.id);
             this.registerCreateSketchesInMenu();

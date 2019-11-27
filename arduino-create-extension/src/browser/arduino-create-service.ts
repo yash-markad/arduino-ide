@@ -53,7 +53,7 @@ export namespace ArduinoCreateConflictResponse {
 export interface ArduinoCreateUploadSketch {
     user_id: string;
     path: string;
-    ino: string; //the data of the sketch ino file
+    ino: string; // the data of the sketch ino file
 }
 
 export interface ArduinoCreateUploadFile {
@@ -344,7 +344,6 @@ export class ArduinoCreateService {
 
     protected async addRemotely(ctx: FileSyncContext): Promise<void> {
         let { content } = await this.fileSystem.resolveContent(ctx.local!.uri);
-        ctx.localSketchData.sketch.name
         const path = new Path(ctx.localSketchData.sketch.path).join(ctx.name).toString();
         await this.api.writeFile(path, this.tryEncode(content));
     }
