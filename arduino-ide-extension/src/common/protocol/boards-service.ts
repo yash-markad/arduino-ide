@@ -173,25 +173,84 @@ export namespace Port {
 }
 
 export interface BoardPackage extends ArduinoComponent {
-    id: string;
-    boards: Board[];
+    readonly id: string;
+    readonly boards: Board[];
 }
 
 export interface Board {
-    name: string
-    fqbn?: string
+    readonly name: string
+    readonly fqbn?: string
 }
 
 export interface BoardDetails extends Board {
-    fqbn: string;
-
-    requiredTools: Tool[];
+    readonly fqbn: string;
+    readonly requiredTools: Tool[];
+    readonly configOptions: ConfigOption[];
 }
 
 export interface Tool {
     readonly packager: string;
     readonly name: string;
-    readonly version: string;
+    readonly version: Installable.Version;
+}
+
+export interface ConfigOption {
+    readonly option: string;
+    readonly label: string;
+    readonly values: ConfigValue[];
+}
+export namespace ConfigOption {
+
+    /**
+     * Appends the configuration options to the `fqbn` argument.
+     * Throws an error if the `fqbn` does not have the `segment(':'segment)*` format.
+     * The provided output format is always segment(':'segment)*(':'option'='value(','option'='value)*)?
+     */
+    export function decorate(fqbn: string, ...configOptions: ConfigOption[]): string {
+        if (!isValidFqbn(fqbn)) {
+            throw new ConfigOptionError(`${fqbn} is not a valid FQBN.`);
+        }
+        if (isValidFqbnWithOptions(fqbn)) {
+            throw new ConfigOptionError(`${fqbn} is already decorated with the configuration options.`);
+        }
+        const toValue = (values: ConfigValue[]) => {
+            const selectedValue = values.find(({ selected }) => selected);
+            if (!selectedValue) {
+                console.warn(`None of the config values was selected. Values were: ${JSON.stringify(values)}`);
+                return undefined;
+            }
+            return selectedValue.value;
+        }
+        const options = configOptions
+            .map(({ option, values }) => [option, toValue(values)])
+            .filter(([, value]) => !!value)
+            .map(([option, value]) => `${option}=${value}`)
+            .join(',');
+
+        return `${fqbn}:${options}`;
+    }
+
+    export function isValidFqbn(fqbn: string): boolean {
+        return /^\w+(:\w+)*$/.test(fqbn);
+    }
+
+    export function isValidFqbnWithOptions(fqbn: string): boolean {
+        return /^\w+(:\w+)*(:\w+=\w+(,\w+=\w+)*)$/.test(fqbn);
+    }
+
+    export class ConfigOptionError extends Error {
+        constructor(message: string) {
+            super(message);
+            Object.setPrototypeOf(this, ConfigOptionError.prototype);
+        }
+    }
+
+}
+
+export interface ConfigValue {
+    readonly label: string;
+    readonly value: string;
+    readonly selected: boolean;
 }
 
 export namespace Board {

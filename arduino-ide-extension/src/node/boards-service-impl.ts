@@ -3,7 +3,7 @@ import { ILogger } from '@theia/core/lib/common/logger';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import {
     BoardsService, AttachedSerialBoard, BoardPackage, Board, AttachedNetworkBoard, BoardsServiceClient,
-    Port, BoardDetails, Tool
+    Port, BoardDetails, Tool, ConfigOption, ConfigValue
 } from '../common/protocol/boards-service';
 import {
     PlatformSearchReq, PlatformSearchResp, PlatformInstallReq, PlatformInstallResp, PlatformListReq,
@@ -219,29 +219,41 @@ export class BoardsServiceImpl implements BoardsService {
         return { boards, ports };
     }
 
-    async detail(options: { id: string }): Promise<{ item?: BoardDetails }> {
+    async detail(options: { fqbn: string }): Promise<{ item?: BoardDetails }> {
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
             return {};
         }
         const { client, instance } = coreClient;
 
+        const { fqbn } = options;
         const req = new BoardDetailsReq();
         req.setInstance(instance);
-        req.setFqbn(options.id);
+        req.setFqbn(fqbn);
         const resp = await new Promise<BoardDetailsResp>((resolve, reject) => client.boardDetails(req, (err, resp) => (!!err ? reject : resolve)(!!err ? err : resp)));
 
-        const tools = await Promise.all(resp.getRequiredToolsList().map(async t => <Tool>{
+        const requiredTools = resp.getRequiredToolsList().map(t => <Tool>{
             name: t.getName(),
             packager: t.getPackager(),
             version: t.getVersion()
-        }));
+        });
+
+        const configOptions = resp.getConfigOptionsList().map(c => <ConfigOption>{
+            label: c.getOptionLabel(),
+            option: c.getOption(),
+            values: c.getValuesList().map(v => <ConfigValue>{
+                value: v.getValue(),
+                label: v.getValueLabel(),
+                selected: v.getSelected()
+            })
+        });
 
         return {
             item: {
                 name: resp.getName(),
-                fqbn: options.id,
-                requiredTools: tools
+                fqbn,
+                requiredTools,
+                configOptions
             }
         };
     }

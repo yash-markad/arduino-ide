@@ -5,6 +5,6 @@ export interface Detailable<T> {
 
 export namespace Detailable {
     export interface Options {
-        readonly id: string;
+        readonly fqbn: string;
     }
 }
