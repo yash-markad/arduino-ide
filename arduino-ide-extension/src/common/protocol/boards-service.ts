@@ -2,7 +2,6 @@ import { isWindows, isOSX } from '@theia/core/lib/common/os';
 import { JsonRpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { Searchable } from './searchable';
 import { Installable } from './installable';
-import { Detailable } from './detailable';
 import { ArduinoComponent } from './arduino-component';
 const naturalCompare: (left: string, right: string) => number = require('string-natural-compare').caseInsensitive;
 
@@ -60,9 +59,10 @@ export interface BoardsServiceClient {
 
 export const BoardsServicePath = '/services/boards-service';
 export const BoardsService = Symbol('BoardsService');
-export interface BoardsService extends Installable<BoardPackage>, Searchable<BoardPackage>, Detailable<BoardDetails>, JsonRpcServer<BoardsServiceClient> {
+export interface BoardsService extends Installable<BoardPackage>, Searchable<BoardPackage>, JsonRpcServer<BoardsServiceClient> {
     getAttachedBoards(): Promise<{ boards: Board[] }>;
     getAvailablePorts(): Promise<{ ports: Port[] }>;
+    getBoardDetails(options: { fqbn: string }): Promise<BoardDetails>;
 }
 
 export interface Port {
@@ -244,6 +244,8 @@ export namespace ConfigOption {
             Object.setPrototypeOf(this, ConfigOptionError.prototype);
         }
     }
+
+    export const LABEL_COMPARATOR = (left: ConfigOption, right: ConfigOption) => left.label.toLocaleLowerCase().localeCompare(right.label.toLocaleLowerCase());
 
 }
 

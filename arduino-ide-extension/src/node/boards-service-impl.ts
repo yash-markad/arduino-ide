@@ -219,10 +219,10 @@ export class BoardsServiceImpl implements BoardsService {
         return { boards, ports };
     }
 
-    async detail(options: { fqbn: string }): Promise<{ item?: BoardDetails }> {
+    async getBoardDetails(options: { fqbn: string }): Promise<BoardDetails> {
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
-            return {};
+            throw new Error(`Cannot acquire core client provider.`);
         }
         const { client, instance } = coreClient;
 
@@ -249,12 +249,10 @@ export class BoardsServiceImpl implements BoardsService {
         });
 
         return {
-            item: {
-                name: resp.getName(),
-                fqbn,
-                requiredTools,
-                configOptions
-            }
+            name: resp.getName(),
+            fqbn,
+            requiredTools,
+            configOptions
         };
     }
 

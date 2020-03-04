@@ -35,9 +35,15 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     protected latestValidBoardsConfig: RecursiveRequired<BoardsConfig.Config> | undefined = undefined;
     protected _boardsConfig: BoardsConfig.Config = {};
 
+    /**
+     * Event when the state of the attached/detached boards has changed. For instance, the user have detached a physical board.
+     */
     readonly onBoardsChanged = this.onAttachedBoardsChangedEmitter.event;
     readonly onBoardInstalled = this.onBoardInstalledEmitter.event;
     readonly onBoardUninstalled = this.onBoardUninstalledEmitter.event;
+    /**
+     * Unlike `onBoardsChanged` this even fires when the user modifies the selected board in the IDE.
+     */
     readonly onBoardsConfigChanged = this.onSelectedBoardsConfigChangedEmitter.event;
 
     async onStart(): Promise<void> {

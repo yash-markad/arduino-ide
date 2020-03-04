@@ -75,6 +75,7 @@ import { ArduinoFrontendConnectionStatusService, ArduinoApplicationConnectionSta
 import { FrontendConnectionStatusService, ApplicationConnectionStatusContribution } from '@theia/core/lib/browser/connection-status-service';
 import { ConfigServiceClientImpl } from './config-service-client-impl';
 import { CoreServiceClientImpl } from './core-service-client-impl';
+import { BoardsDetailsMenuUpdater } from './boards/boards-details-menu-updater';
 
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
@@ -149,6 +150,9 @@ export default new ContainerModule((bind: interfaces.Bind, unbind: interfaces.Un
         WebSocketConnectionProvider.createProxy(context.container, BoardsServicePath, client);
         return client;
     }).inSingletonScope();
+
+    // To be able to track, and update the menu based on the core settings (aka. board details) of the currently selected board.
+    bind(FrontendApplicationContribution).to(BoardsDetailsMenuUpdater).inSingletonScope();
 
     // Boards auto-installer
     bind(BoardsAutoInstaller).toSelf().inSingletonScope();
