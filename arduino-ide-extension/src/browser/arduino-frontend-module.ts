@@ -76,6 +76,7 @@ import { FrontendConnectionStatusService, ApplicationConnectionStatusContributio
 import { ConfigServiceClientImpl } from './config-service-client-impl';
 import { CoreServiceClientImpl } from './core-service-client-impl';
 import { BoardsDetailsMenuUpdater } from './boards/boards-details-menu-updater';
+import { BoardsConfigStore } from './boards/boards-config-store';
 
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
@@ -153,6 +154,8 @@ export default new ContainerModule((bind: interfaces.Bind, unbind: interfaces.Un
 
     // To be able to track, and update the menu based on the core settings (aka. board details) of the currently selected board.
     bind(FrontendApplicationContribution).to(BoardsDetailsMenuUpdater).inSingletonScope();
+    bind(BoardsConfigStore).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(BoardsConfigStore);
 
     // Boards auto-installer
     bind(BoardsAutoInstaller).toSelf().inSingletonScope();

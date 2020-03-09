@@ -48,18 +48,17 @@ describe('boards-service', () => {
                 {},
                 undefined
             ]
-
         ] as Array<[string, Array<ConfigOption>, string | undefined]>).forEach(([fqbn, configOptions, expectation]) => {
             it(`should ${expectation ? `append` : 'throw an error when appending'}config options to ${fqbn}`, () => {
                 if (!expectation) {
                     try {
-                        ConfigOption.decorate(fqbn, ...configOptions);
+                        ConfigOption.decorate(fqbn, configOptions);
                         fail(`Expected a failure when decorating ${fqbn} with config options.`);
                     } catch (e) {
                         expect(e).to.be.instanceOf(ConfigOption.ConfigOptionError);
                     }
                 } else {
-                    expect(ConfigOption.decorate(fqbn, ...configOptions)).to.be.equal(expectation);
+                    expect(ConfigOption.decorate(fqbn, configOptions)).to.be.equal(expectation);
                 }
             });
         });

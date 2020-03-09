@@ -1,12 +1,12 @@
 import { inject, injectable } from 'inversify';
-import { notEmpty } from '@theia/core/lib/common/objects';
 import { CommandRegistry } from '@theia/core/lib/common/command';
-import { MenuModelRegistry } from '@theia/core/lib/common/menu';
+import { MenuModelRegistry, MenuNode } from '@theia/core/lib/common/menu';
 import { Disposable, DisposableCollection } from '@theia/core/lib/common/disposable';
 import { BoardsServiceClientImpl } from './boards-service-client-impl';
-import { BoardsService, BoardPackage, BoardDetails, Board, ConfigOption } from '../../common/protocol';
-import { LocalStorageService, FrontendApplicationContribution } from '@theia/core/lib/browser';
+import { Board, ConfigOption } from '../../common/protocol';
+import { FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { ArduinoMenus } from '../arduino-frontend-contribution';
+import { BoardsConfigStore } from './boards-config-store';
 
 @injectable()
 export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution {
@@ -17,27 +17,17 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
     @inject(MenuModelRegistry)
     protected menuRegistry: MenuModelRegistry;
 
-    @inject(BoardsService)
-    protected readonly boardsService: BoardsService;
+    @inject(BoardsConfigStore)
+    protected boardsConfigStore: BoardsConfigStore;
 
     @inject(BoardsServiceClientImpl)
     protected readonly boardsServiceClient: BoardsServiceClientImpl;
 
-    @inject(LocalStorageService)
-    protected readonly storageService: LocalStorageService;
-
     protected readonly toDisposeOnBoardChange = new DisposableCollection();
 
     onStart(): void {
-        this.boardsServiceClient.onBoardInstalled(({ pkg }) => this.getAllBoardDetails(pkg));
         this.boardsServiceClient.onBoardsConfigChanged(({ selectedBoard }) => this.updateMenuActions(selectedBoard));
         this.updateMenuActions(this.boardsServiceClient.boardsConfig.selectedBoard);
-    }
-
-    protected async getAllBoardDetails(pkg: BoardPackage): Promise<BoardDetails[]> {
-        return await Promise.all(pkg.boards.map(({ fqbn }) => fqbn)
-            .filter(notEmpty)
-            .map(fqbn => this.boardsService.getBoardDetails({ fqbn })));
     }
 
     protected async updateMenuActions(selectedBoard: Board | undefined): Promise<void> {
@@ -45,46 +35,53 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
             this.toDisposeOnBoardChange.dispose();
             const { fqbn } = selectedBoard;
             if (fqbn) {
-                const configOptions = await this.getConfigOptions(fqbn);
+                const configOptions = await this.boardsConfigStore.getConfig(fqbn);
                 const boardsConfigMenuPath = [...ArduinoMenus.TOOLS, 'z_boardsConfig']; // `z_` is for ordering.
                 for (const { label, option, values } of configOptions.sort(ConfigOption.LABEL_COMPARATOR)) {
-                    const menuPath = [...boardsConfigMenuPath, `${label}`];
+                    const menuPath = [...boardsConfigMenuPath, `${option}`];
                     const commands = new Map<string, Disposable>()
                     for (const value of values) {
                         const id = `${fqbn}-${option}--${value.value}`;
                         const command = { id, label: value.label };
+                        const selectedValue = value.value;
                         const handler = {
-                            execute: () => console.log('executing', id),
-                            isVisible: () => true,
-                            isEnabled: () => true
+                            execute: () => this.boardsConfigStore.setSelected({ fqbn, option, selectedValue }).then(() => this.updateMenuActions(selectedBoard)),
+                            isToggled: () => value.selected
                         };
                         commands.set(id, this.commandRegistry.registerCommand(command, handler));
                     }
+                    console.log(label, option);
+                    // We cannot dispose submenu entries: https://github.com/eclipse-theia/theia/issues/7299
+                    this.menuRegistry.registerSubmenu(menuPath, label);
                     this.toDisposeOnBoardChange.pushAll([
                         ...commands.values(),
-                        this.menuRegistry.registerSubmenu(menuPath, label),
+                        Disposable.create(() => this.unregisterSubmenu(menuPath)),
                         ...Array.from(commands.keys()).map((commandId, index) => this.menuRegistry.registerMenuAction(menuPath, { commandId, order: String(index) }))
                     ]);
                 }
-                console.log(this.commandRegistry.commandIds);
             }
         }
     }
 
-    protected async getConfigOptions(fqbn: string): Promise<ConfigOption[]> {
-        const key = this.getStorageKey(fqbn);
-        let configOptions = await this.storageService.getData<ConfigOption[] | undefined>(key, undefined);
-        if (configOptions) {
-            // return configOptions;
-        }
-        const details = await this.boardsService.getBoardDetails({ fqbn })
-        configOptions = details.configOptions;
-        await this.storageService.setData(key, configOptions);
-        return configOptions;
+    protected setSelected({ fqbn, option, selectedValue }: { fqbn: string, option: string, selectedValue: string }): void {
+        this.boardsConfigStore.setSelected({ fqbn, option, selectedValue }).then(() => (this.menuRegistry as any).fireChanged());
     }
 
-    protected getStorageKey(fqbn: string): string {
-        return `.arduinoProIDE-configOptions-${fqbn}`;
+    protected unregisterSubmenu(menuPath: string[]): void {
+        if (menuPath.length < 2) {
+            throw new Error(`Expected at least two item as a menu-path. Got ${JSON.stringify(menuPath)} instead.`);
+        }
+        const toRemove = menuPath[menuPath.length - 1];
+        const parentMenuPath = menuPath.slice(0, menuPath.length - 1);
+        // This is unsafe. Calling `getMenu` with a non-existing menu-path will result in a new menu creation.
+        // https://github.com/eclipse-theia/theia/issues/7300
+        const parent = this.menuRegistry.getMenu(parentMenuPath);
+        const index = parent.children.findIndex(c => c.id === toRemove);
+        if (index === -1) {
+            throw new Error(`Could not find menu with menu-path: ${JSON.stringify(menuPath)}.`);
+        }
+        (parent.children as Array<MenuNode>).splice(index, 1);
+        (this.menuRegistry as any).fireChanged();
     }
 
 }
