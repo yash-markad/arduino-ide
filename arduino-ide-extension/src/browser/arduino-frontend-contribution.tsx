@@ -46,6 +46,7 @@ import { ColorRegistry } from '@theia/core/lib/browser/color-registry';
 import { ArduinoDaemon } from '../common/protocol/arduino-daemon';
 import { ConfigService } from '../common/protocol/config-service';
 import { BoardsConfigStore } from './boards/boards-config-store';
+import { MainMenuManager } from './menu/main-menu-manager';
 
 export namespace ArduinoMenus {
     export const SKETCH = [...MAIN_MENU_BAR, '3_sketch'];
@@ -146,6 +147,9 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
 
     @inject(BoardsConfigStore)
     protected readonly boardsConfigStore: BoardsConfigStore;
+
+    @inject(MainMenuManager)
+    protected readonly mainMenuManager: MainMenuManager;
 
     protected application: FrontendApplication;
     protected wsSketchCount: number = 0; // TODO: this does not belong here, does it?
@@ -280,10 +284,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
         });
 
         registry.registerCommand(ArduinoCommands.TOGGLE_COMPILE_FOR_DEBUG, {
-            execute: () => {
-                this.editorMode.toggleCompileForDebug();
-                this.editorMode.menuContentChanged.fire();
-            },
+            execute: () => this.editorMode.toggleCompileForDebug(),
             isToggled: () => this.editorMode.compileForDebug
         });
 

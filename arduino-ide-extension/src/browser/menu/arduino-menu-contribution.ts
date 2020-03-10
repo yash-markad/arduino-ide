@@ -1,12 +1,11 @@
 import { injectable } from 'inversify';
 import { FrontendApplication } from '@theia/core/lib/browser';
-import { BrowserMenuContribution } from '@theia/core/lib/browser/menu/browser-menu-contribution';
+import { BrowserMenuBarContribution } from '@theia/core/lib/browser/menu/browser-menu-plugin';
 
 @injectable()
-export class ArduinoMenuContribution extends BrowserMenuContribution {
+export class ArduinoMenuContribution extends BrowserMenuBarContribution {
 
     onStart(app: FrontendApplication): void {
-        super.onStart(app);
         const menu = this.factory.createMenuBar();
         app.shell.addWidget(menu, { area: 'top' });
     }
