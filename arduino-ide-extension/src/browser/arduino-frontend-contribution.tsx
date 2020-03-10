@@ -45,6 +45,7 @@ import { ColorContribution } from '@theia/core/lib/browser/color-application-con
 import { ColorRegistry } from '@theia/core/lib/browser/color-registry';
 import { ArduinoDaemon } from '../common/protocol/arduino-daemon';
 import { ConfigService } from '../common/protocol/config-service';
+import { BoardsConfigStore } from './boards/boards-config-store';
 
 export namespace ArduinoMenus {
     export const SKETCH = [...MAIN_MENU_BAR, '3_sketch'];
@@ -142,6 +143,9 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
 
     @inject(ConfigService)
     protected readonly configService: ConfigService;
+
+    @inject(BoardsConfigStore)
+    protected readonly boardsConfigStore: BoardsConfigStore;
 
     protected application: FrontendApplication;
     protected wsSketchCount: number = 0; // TODO: this does not belong here, does it?
@@ -385,10 +389,11 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
                 throw new Error(`No core is installed for ${boardsConfig.selectedBoard.name}. Please install the board.`);
             }
             // Reveal the Output view asynchronously (don't await it)
+            const fqbn = await this.boardsConfigStore.appendConfigToFqbn(boardsConfig.selectedBoard.fqbn);
             this.outputContribution.openView({ reveal: true });
             await this.coreService.compile({
-                uri: uri.toString(),
-                board: boardsConfig.selectedBoard,
+                sketchUri: uri.toString(),
+                fqbn,
                 optimizeForDebug: this.editorMode.compileForDebug
             });
         } catch (e) {
@@ -421,11 +426,15 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             if (!selectedPort) {
                 throw new Error('No ports selected. Please select a port.');
             }
+            if (!boardsConfig.selectedBoard.fqbn) {
+                throw new Error(`No core is installed for ${boardsConfig.selectedBoard.name}. Please install the board.`);
+            }
             // Reveal the Output view asynchronously (don't await it)
             this.outputContribution.openView({ reveal: true });
+            const fqbn = await this.boardsConfigStore.appendConfigToFqbn(boardsConfig.selectedBoard.fqbn);
             await this.coreService.upload({
-                uri: uri.toString(),
-                board: boardsConfig.selectedBoard,
+                sketchUri: uri.toString(),
+                fqbn,
                 port: selectedPort.address,
                 optimizeForDebug: this.editorMode.compileForDebug
             });

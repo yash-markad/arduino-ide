@@ -63,7 +63,6 @@ describe('boards-service', () => {
             });
         });
 
-
     });
 
 });
