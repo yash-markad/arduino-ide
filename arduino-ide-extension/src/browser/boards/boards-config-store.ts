@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import { Event, Emitter } from '@theia/core/lib/common/event';
 import { deepClone, notEmpty } from '@theia/core/lib/common/objects';
 import { FrontendApplicationContribution, LocalStorageService } from '@theia/core/lib/browser';
 import { BoardsService, ConfigOption } from '../../common/protocol';
@@ -16,11 +17,28 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
     @inject(LocalStorageService)
     protected readonly storageService: LocalStorageService;
 
+    protected readonly onChangedEmitter = new Emitter<void>();
+
     onStart(): void {
-        this.boardsServiceClient.onBoardInstalled(({ pkg }) => pkg.boards.map(({ fqbn }) => fqbn).filter(notEmpty).forEach(this.getConfig.bind(this)));
+        this.boardsServiceClient.onBoardInstalled(async ({ pkg }) => {
+            for (const fqbn of pkg.boards.map(({ fqbn }) => fqbn).filter(notEmpty).filter(fqbn => !!fqbn)) {
+                await this.refreshConfig(fqbn);
+            }
+            this.fireChanged();
+        });
+        this.boardsServiceClient.onBoardUninstalled(async ({ pkg }) => {
+            for (const fqbn of pkg.boards.map(({ fqbn }) => fqbn).filter(notEmpty).filter(fqbn => !!fqbn)) {
+                await this.deleteConfig(fqbn);
+            }
+            this.fireChanged();
+        });
     }
 
-    async appendConfigToFqbn(fqbn: string, ): Promise<string> {
+    get onChanged(): Event<void> {
+        return this.onChangedEmitter.event;
+    }
+
+    async appendConfigToFqbn(fqbn: string): Promise<string> {
         const configOptions = await this.getConfig(fqbn);
         return ConfigOption.decorate(fqbn, configOptions);
     }
@@ -56,6 +74,7 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
             return false;
         }
         await this.setConfig({ fqbn, configOptions });
+        this.fireChanged();
         return true;
     }
 
@@ -64,8 +83,24 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
         return this.storageService.setData(key, configOptions);
     }
 
+    protected async refreshConfig(fqbn: string): Promise<void> {
+        const key = this.getStorageKey(fqbn);
+        const details = await this.boardsService.getBoardDetails({ fqbn });
+        const configOptions = details.configOptions;
+        await this.storageService.setData(key, configOptions);
+    }
+
+    protected async deleteConfig(fqbn: string): Promise<void> {
+        const key = this.getStorageKey(fqbn);
+        await this.storageService.setData(key, undefined);
+    }
+
     protected getStorageKey(fqbn: string): string {
         return `.arduinoProIDE-configOptions-${fqbn}`;
+    }
+
+    protected fireChanged(): void {
+        this.onChangedEmitter.fire();
     }
 
 }

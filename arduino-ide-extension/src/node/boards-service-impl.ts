@@ -230,7 +230,26 @@ export class BoardsServiceImpl implements BoardsService {
         const req = new BoardDetailsReq();
         req.setInstance(instance);
         req.setFqbn(fqbn);
-        const resp = await new Promise<BoardDetailsResp>((resolve, reject) => client.boardDetails(req, (err, resp) => (!!err ? reject : resolve)(!!err ? err : resp)));
+        const resp = await new Promise<BoardDetailsResp | BoardDetails>((resolve, reject) => client.boardDetails(req, (err, resp) => {
+            if (err) {
+                // loading board data: platform platform:id is not installed
+                if (err.message.includes('loading board data') && err.message.includes('is not installed')) {
+                    resolve({
+                        fqbn,
+                        requiredTools: [],
+                        configOptions: []
+                    });
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(resp);
+            }
+        }));
+
+        if (BoardDetails.is(resp)) {
+            return resp;
+        }
 
         const requiredTools = resp.getRequiredToolsList().map(t => <Tool>{
             name: t.getName(),
@@ -249,7 +268,6 @@ export class BoardsServiceImpl implements BoardsService {
         });
 
         return {
-            name: resp.getName(),
             fqbn,
             requiredTools,
             configOptions
@@ -348,11 +366,11 @@ export class BoardsServiceImpl implements BoardsService {
         }
         const { client, instance } = coreClient;
 
-        const [platform, boardName] = pkg.id.split(":");
+        const [platform, architecture] = pkg.id.split(":");
 
         const req = new PlatformInstallReq();
         req.setInstance(instance);
-        req.setArchitecture(boardName);
+        req.setArchitecture(architecture);
         req.setPlatformPackage(platform);
         req.setVersion(version);
 
@@ -369,7 +387,9 @@ export class BoardsServiceImpl implements BoardsService {
             resp.on('error', reject);
         });
         if (this.client) {
-            this.client.notifyBoardInstalled({ pkg });
+            const packages = await this.search({});
+            const updatedPackage = packages.items.find(({ id }) => id === pkg.id) || pkg;
+            this.client.notifyBoardInstalled({ pkg: updatedPackage });
         }
         console.info("Board installation done", pkg);
     }
@@ -382,11 +402,11 @@ export class BoardsServiceImpl implements BoardsService {
         }
         const { client, instance } = coreClient;
 
-        const [platform, boardName] = pkg.id.split(":");
+        const [platform, architecture] = pkg.id.split(":");
 
         const req = new PlatformUninstallReq();
         req.setInstance(instance);
-        req.setArchitecture(boardName);
+        req.setArchitecture(architecture);
         req.setPlatformPackage(platform);
 
         console.info("Starting board uninstallation", pkg);
@@ -403,6 +423,7 @@ export class BoardsServiceImpl implements BoardsService {
             resp.on('error', reject);
         });
         if (this.client) {
+            // Here, unlike at `install` we send out the argument `pkg`. Otherwise, we would not know about the board FQBN.
             this.client.notifyBoardUninstalled({ pkg });
         }
         console.info("Board uninstallation done", pkg);

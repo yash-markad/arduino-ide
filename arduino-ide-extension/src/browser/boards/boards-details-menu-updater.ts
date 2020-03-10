@@ -30,6 +30,7 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
     protected readonly toDisposeOnBoardChange = new DisposableCollection();
 
     onStart(): void {
+        this.boardsConfigStore.onChanged(() => this.updateMenuActions(this.boardsServiceClient.boardsConfig.selectedBoard));
         this.boardsServiceClient.onBoardsConfigChanged(({ selectedBoard }) => this.updateMenuActions(selectedBoard));
         this.updateMenuActions(this.boardsServiceClient.boardsConfig.selectedBoard);
     }
@@ -49,7 +50,7 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
                         const command = { id, label: value.label };
                         const selectedValue = value.value;
                         const handler = {
-                            execute: () => this.boardsConfigStore.setSelected({ fqbn, option, selectedValue }).then(() => this.updateMenuActions(selectedBoard)),
+                            execute: () => this.boardsConfigStore.setSelected({ fqbn, option, selectedValue }),
                             isToggled: () => value.selected
                         };
                         commands.set(id, this.commandRegistry.registerCommand(command, handler));

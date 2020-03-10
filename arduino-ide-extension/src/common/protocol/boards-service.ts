@@ -182,10 +182,21 @@ export interface Board {
     readonly fqbn?: string
 }
 
-export interface BoardDetails extends Board {
+export interface BoardDetails {
     readonly fqbn: string;
     readonly requiredTools: Tool[];
     readonly configOptions: ConfigOption[];
+}
+export namespace BoardDetails {
+    export function is(arg: object | undefined): arg is BoardDetails {
+        return !!arg
+            && 'fqbn' in arg
+            && typeof (arg as any)['fqbn'] === 'string'
+            && 'requiredTools' in arg
+            && Array.isArray((arg as any)['requiredTools'])
+            && 'configOptions' in arg
+            && Array.isArray((arg as any)['configOptions']);
+    }
 }
 
 export interface Tool {
