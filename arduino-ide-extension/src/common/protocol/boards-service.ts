@@ -43,11 +43,11 @@ export namespace AttachedBoardsChangeEvent {
 }
 
 export interface BoardInstalledEvent {
-    readonly pkg: Readonly<BoardPackage>;
+    readonly pkg: Readonly<BoardsPackage>;
 }
 
 export interface BoardUninstalledEvent {
-    readonly pkg: Readonly<BoardPackage>;
+    readonly pkg: Readonly<BoardsPackage>;
 }
 
 export const BoardsServiceClient = Symbol('BoardsServiceClient');
@@ -59,10 +59,12 @@ export interface BoardsServiceClient {
 
 export const BoardsServicePath = '/services/boards-service';
 export const BoardsService = Symbol('BoardsService');
-export interface BoardsService extends Installable<BoardPackage>, Searchable<BoardPackage>, JsonRpcServer<BoardsServiceClient> {
+export interface BoardsService extends Installable<BoardsPackage>, Searchable<BoardsPackage>, JsonRpcServer<BoardsServiceClient> {
     getAttachedBoards(): Promise<{ boards: Board[] }>;
     getAvailablePorts(): Promise<{ ports: Port[] }>;
     getBoardDetails(options: { fqbn: string }): Promise<BoardDetails>;
+    getBoardPackage(options: { id: string }): Promise<BoardsPackage | undefined>;
+    getContainerBoardPackage(options: { fqbn: string }): Promise<BoardsPackage | undefined>;
 }
 
 export interface Port {
@@ -172,7 +174,7 @@ export namespace Port {
 
 }
 
-export interface BoardPackage extends ArduinoComponent {
+export interface BoardsPackage extends ArduinoComponent {
     readonly id: string;
     readonly boards: Board[];
 }

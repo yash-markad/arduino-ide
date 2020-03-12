@@ -38,6 +38,7 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
     protected async updateMenuActions(selectedBoard: Board | undefined): Promise<void> {
         if (selectedBoard) {
             this.toDisposeOnBoardChange.dispose();
+            this.mainMenuManager.update();
             const { fqbn } = selectedBoard;
             if (fqbn) {
                 const configOptions = await this.boardsConfigStore.getConfig(fqbn);
@@ -67,7 +68,6 @@ export class BoardsDetailsMenuUpdater implements FrontendApplicationContribution
                 }
                 this.mainMenuManager.update();
             }
-            this.toDisposeOnBoardChange.push(Disposable.create(() => this.mainMenuManager.update()));
         }
     }
 

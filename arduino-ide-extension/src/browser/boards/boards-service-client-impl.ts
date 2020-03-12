@@ -42,7 +42,11 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     readonly onBoardInstalled = this.onBoardInstalledEmitter.event;
     readonly onBoardUninstalled = this.onBoardUninstalledEmitter.event;
     /**
-     * Unlike `onBoardsChanged` this even fires when the user modifies the selected board in the IDE.
+     * Unlike `onBoardsChanged` this even fires when the user modifies the selected board in the IDE.\
+     * This even also fires, when the boards package was not available for the currently selected board,
+     * and the user installs the board package. Note: installing a board package will set the `fqbn` of the
+     * currently selected board.\
+     * This even also emitted when the board package for the currently selected board was uninstalled.
      */
     readonly onBoardsConfigChanged = this.onSelectedBoardsConfigChangedEmitter.event;
 
@@ -97,11 +101,38 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     notifyBoardInstalled(event: BoardInstalledEvent): void {
         this.logger.info('Board installed: ', JSON.stringify(event));
         this.onBoardInstalledEmitter.fire(event);
+        const { selectedBoard } = this.boardsConfig;
+        const { installedVersion, id } = event.pkg;
+        if (selectedBoard) {
+            const installedBoard = event.pkg.boards.find(({ name }) => name === selectedBoard.name);
+            if (installedBoard && (!selectedBoard.fqbn || selectedBoard.fqbn === installedBoard.fqbn)) {
+                this.logger.info(`Board package ${id}[${installedVersion}] was installed. Updating the FQBN of the currently selected ${selectedBoard.name} board. [FQBN: ${installedBoard.fqbn}]`);
+                this.boardsConfig = {
+                    ...this.boardsConfig,
+                    selectedBoard: installedBoard
+                };
+            }
+        }
     }
 
     notifyBoardUninstalled(event: BoardUninstalledEvent): void {
         this.logger.info('Board uninstalled: ', JSON.stringify(event));
         this.onBoardUninstalledEmitter.fire(event);
+        const { selectedBoard } = this.boardsConfig;
+        if (selectedBoard && selectedBoard.fqbn) {
+            const uninstalledBoard = event.pkg.boards.find(({ name }) => name === selectedBoard.name);
+            if (uninstalledBoard && uninstalledBoard.fqbn === selectedBoard.fqbn) {
+                this.logger.info(`Board package ${event.pkg.id} was uninstalled. Discarding the FQBN of the currently selected ${selectedBoard.name} board.`);
+                const selectedBoardWithoutFqbn = {
+                    name: selectedBoard.name
+                    // No FQBN
+                };
+                this.boardsConfig = {
+                    ...this.boardsConfig,
+                    selectedBoard: selectedBoardWithoutFqbn
+                };
+            }
+        }
     }
 
     set boardsConfig(config: BoardsConfig.Config) {
@@ -110,7 +141,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         if (this.canUploadTo(this._boardsConfig)) {
             this.latestValidBoardsConfig = this._boardsConfig;
         }
-        this.saveState().then(() => this.onSelectedBoardsConfigChangedEmitter.fire(this._boardsConfig));
+        this.saveState().finally(() => this.onSelectedBoardsConfigChangedEmitter.fire(this._boardsConfig));
     }
 
     get boardsConfig(): BoardsConfig.Config {
@@ -167,8 +198,8 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         return true;
     }
 
-    protected saveState(): Promise<void> {
-        return this.storageService.setData('latest-valid-boards-config', this.latestValidBoardsConfig);
+    protected async saveState(): Promise<void> {
+        await this.storageService.setData('latest-valid-boards-config', this.latestValidBoardsConfig);
     }
 
     protected async loadState(): Promise<void> {

@@ -2,7 +2,7 @@ import { injectable, inject, postConstruct, named } from 'inversify';
 import { ILogger } from '@theia/core/lib/common/logger';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import {
-    BoardsService, AttachedSerialBoard, BoardPackage, Board, AttachedNetworkBoard, BoardsServiceClient,
+    BoardsService, AttachedSerialBoard, BoardsPackage, Board, AttachedNetworkBoard, BoardsServiceClient,
     Port, BoardDetails, Tool, ConfigOption, ConfigValue
 } from '../common/protocol/boards-service';
 import {
@@ -274,7 +274,25 @@ export class BoardsServiceImpl implements BoardsService {
         };
     }
 
-    async search(options: { query?: string }): Promise<{ items: BoardPackage[] }> {
+    async getBoardPackage(options: { id: string }): Promise<BoardsPackage | undefined> {
+        const { id: expectedId } = options;
+        if (!expectedId) {
+            return undefined;
+        }
+        const result = await this.search({ query: expectedId });
+        return result.items.find(({ id }) => id === expectedId);
+    }
+
+    async getContainerBoardPackage(options: { fqbn: string }): Promise<BoardsPackage | undefined> {
+        const { fqbn: expectedFqbn } = options;
+        if (!expectedFqbn) {
+            return undefined;
+        }
+        const result = await this.search({});
+        return result.items.find(({ boards }) => boards.some(({ fqbn }) => fqbn === expectedFqbn));
+    }
+
+    async search(options: { query?: string }): Promise<{ items: BoardsPackage[] }> {
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
             return { items: [] };
@@ -293,7 +311,7 @@ export class BoardsServiceImpl implements BoardsService {
         req.setAllVersions(true);
         req.setInstance(instance);
         const resp = await new Promise<PlatformSearchResp>((resolve, reject) => client.platformSearch(req, (err, resp) => (!!err ? reject : resolve)(!!err ? err : resp)));
-        const packages = new Map<string, BoardPackage>();
+        const packages = new Map<string, BoardsPackage>();
         const toPackage = (platform: Platform) => {
             let installedVersion: string | undefined;
             const matchingPlatform = installedPlatforms.find(ip => ip.getId() === platform.getId());
@@ -357,7 +375,7 @@ export class BoardsServiceImpl implements BoardsService {
         return { items: [...packages.values()] };
     }
 
-    async install(options: { item: BoardPackage, version?: Installable.Version }): Promise<void> {
+    async install(options: { item: BoardsPackage, version?: Installable.Version }): Promise<void> {
         const pkg = options.item;
         const version = !!options.version ? options.version : pkg.availableVersions[0];
         const coreClient = await this.coreClientProvider.client();
@@ -394,7 +412,7 @@ export class BoardsServiceImpl implements BoardsService {
         console.info("Board installation done", pkg);
     }
 
-    async uninstall(options: { item: BoardPackage }): Promise<void> {
+    async uninstall(options: { item: BoardsPackage }): Promise<void> {
         const pkg = options.item;
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
