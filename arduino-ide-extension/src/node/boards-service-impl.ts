@@ -353,7 +353,7 @@ export class BoardsServiceImpl implements BoardsService {
             if (!leftInstalled && rightInstalled) {
                 return 1;
             }
-            return Installable.Version.COMPARATOR(right.getLatest(), left.getLatest()); // Higher version comes first.
+            return Installable.Version.COMPARATOR(left.getLatest(), right.getLatest()); // Higher version comes first.
         }
         for (const id of groupedById.keys()) {
             groupedById.get(id)!.sort(installedAwareVersionComparator);
