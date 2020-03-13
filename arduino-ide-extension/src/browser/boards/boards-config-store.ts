@@ -4,7 +4,7 @@ import { MaybePromise } from '@theia/core/lib/common/types';
 import { Event, Emitter } from '@theia/core/lib/common/event';
 import { deepClone, notEmpty } from '@theia/core/lib/common/objects';
 import { FrontendApplicationContribution, LocalStorageService } from '@theia/core/lib/browser';
-import { BoardsService, ConfigOption, Installable } from '../../common/protocol';
+import { BoardsService, ConfigOption, Installable, BoardDetails } from '../../common/protocol';
 import { BoardsServiceClientImpl } from './boards-service-client-impl';
 
 @injectable()
@@ -36,11 +36,13 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
                 const key = this.getStorageKey(fqbn, version);
                 let data = await this.storageService.getData<ConfigOption[] | undefined>(key);
                 if (!data || !data.length) {
-                    const details = await this.boardsService.getBoardDetails({ fqbn });
-                    data = details.configOptions;
-                    if (data.length) {
-                        await this.storageService.setData(key, data);
-                        shouldFireChanged = true;
+                    const details = await this.getBoardDetailsSafe(fqbn);
+                    if (details) {
+                        data = details.configOptions;
+                        if (data.length) {
+                            await this.storageService.setData(key, data);
+                            shouldFireChanged = true;
+                        }
                     }
                 }
             }
@@ -75,12 +77,14 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
         if (configOptions) {
             return configOptions;
         }
-        const details = await this.boardsService.getBoardDetails({ fqbn });
-        configOptions = details.configOptions;
-        if (configOptions.length) {
-            // Do not store empty arrays, they mean not-installed configs.
-            await this.storageService.setData(key, configOptions);
+
+        const details = await this.getBoardDetailsSafe(fqbn);
+        if (!details) {
+            return [];
         }
+
+        configOptions = details.configOptions;
+        await this.storageService.setData(key, configOptions);
         return configOptions;
     }
 
@@ -123,6 +127,20 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
 
     protected getStorageKey(fqbn: string, version: Installable.Version): string {
         return `.arduinoProIDE-configOptions-${version}-${fqbn}`;
+    }
+
+    protected async getBoardDetailsSafe(fqbn: string): Promise<BoardDetails | undefined> {
+        try {
+            const details = this.boardsService.getBoardDetails({ fqbn });
+            return details;
+        } catch (err) {
+            if (err instanceof Error && err.message.includes('loading board data') && err.message.includes('is not installed')) {
+                this.logger.warn(`The boards package is not installed for board with FQBN: ${fqbn}`);
+            } else {
+                this.logger.error(`An unexpected error occurred while retrieving the board details for ${fqbn}.`, err);
+            }
+            return undefined;
+        }
     }
 
     protected fireChanged(): void {

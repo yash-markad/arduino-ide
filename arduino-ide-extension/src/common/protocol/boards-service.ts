@@ -189,17 +189,6 @@ export interface BoardDetails {
     readonly requiredTools: Tool[];
     readonly configOptions: ConfigOption[];
 }
-export namespace BoardDetails {
-    export function is(arg: object | undefined): arg is BoardDetails {
-        return !!arg
-            && 'fqbn' in arg
-            && typeof (arg as any)['fqbn'] === 'string'
-            && 'requiredTools' in arg
-            && Array.isArray((arg as any)['requiredTools'])
-            && 'configOptions' in arg
-            && Array.isArray((arg as any)['configOptions']);
-    }
-}
 
 export interface Tool {
     readonly packager: string;
@@ -229,6 +218,11 @@ export namespace ConfigOption {
                 throw new ConfigOptionError(`${fqbn} is already decorated with the configuration options.`);
             }
         }
+
+        if (!configOptions.length) {
+            return fqbn;
+        }
+
         const toValue = (values: ConfigValue[]) => {
             const selectedValue = values.find(({ selected }) => selected);
             if (!selectedValue) {
@@ -236,7 +230,7 @@ export namespace ConfigOption {
                 return undefined;
             }
             return selectedValue.value;
-        }
+        };
         const options = configOptions
             .map(({ option, values }) => [option, toValue(values)])
             .filter(([, value]) => !!value)

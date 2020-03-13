@@ -230,26 +230,13 @@ export class BoardsServiceImpl implements BoardsService {
         const req = new BoardDetailsReq();
         req.setInstance(instance);
         req.setFqbn(fqbn);
-        const resp = await new Promise<BoardDetailsResp | BoardDetails>((resolve, reject) => client.boardDetails(req, (err, resp) => {
+        const resp = await new Promise<BoardDetailsResp>((resolve, reject) => client.boardDetails(req, (err, resp) => {
             if (err) {
-                // loading board data: platform platform:id is not installed
-                if (err.message.includes('loading board data') && err.message.includes('is not installed')) {
-                    resolve({
-                        fqbn,
-                        requiredTools: [],
-                        configOptions: []
-                    });
-                } else {
-                    reject(err);
-                }
-            } else {
-                resolve(resp);
+                reject(err);
+                return;
             }
+            resolve(resp);
         }));
-
-        if (BoardDetails.is(resp)) {
-            return resp;
-        }
 
         const requiredTools = resp.getRequiredToolsList().map(t => <Tool>{
             name: t.getName(),

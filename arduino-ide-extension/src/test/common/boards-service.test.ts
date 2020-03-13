@@ -44,6 +44,11 @@ describe('boards-service', () => {
                 'foo:bar:baz:xtal=80,vt=flash,exception=legacy,ssl=all,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200'
             ],
             [
+                'foo:bar:baz',
+                JSON.parse('[]'),
+                'foo:bar:baz'
+            ],
+            [
                 'foo:bar:baz:xtal=80',
                 {},
                 undefined
