@@ -66,7 +66,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     init({ attachedBoards, availablePorts }: { attachedBoards: Board[], availablePorts: Port[] }): void {
         this._attachedBoards = attachedBoards;
         this._availablePorts = availablePorts;
-        this.reconcileAvailableBoards();
+        this.reconcileAvailableBoards().then(() => this.tryReconnect());
     }
 
     notifyAttachedBoardsChanged(event: AttachedBoardsChangeEvent): void {
@@ -86,7 +86,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         this.reconcileAvailableBoards().then(() => this.tryReconnect());
     }
 
-    async tryReconnect(): Promise<boolean> {
+    protected async tryReconnect(): Promise<boolean> {
         if (this.latestValidBoardsConfig && !this.canUploadTo(this.boardsConfig)) {
             for (const board of this.availableBoards) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn

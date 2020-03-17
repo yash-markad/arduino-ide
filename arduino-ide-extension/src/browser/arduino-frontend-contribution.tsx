@@ -166,11 +166,6 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
         updateStatusBar(this.boardsServiceClient.boardsConfig);
 
         this.registerSketchesInMenu(this.menuRegistry);
-
-        Promise.all([
-            this.boardsService.getAttachedBoards(),
-            this.boardsService.getAvailablePorts()
-        ]).then(([{ boards }, { ports }]) => this.boardsServiceClient.tryReconnect(boards, ports));
     }
 
     onStart(app: FrontendApplication): void {

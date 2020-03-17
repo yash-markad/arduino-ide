@@ -169,6 +169,13 @@ button.theia-button.main {
     margin: 0 5px;
 }
 
+.arduino-boards-toolbar-item-container .arduino-boards-toolbar-item .inner-container .guessed {
+    width: 10px;
+    height: 10px;
+    color: var(--theia-warningBackground);
+    margin: 0 5px;
+}
+
 .arduino-boards-toolbar-item-container {
     display: flex;
     align-items: center;

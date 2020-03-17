@@ -124,12 +124,22 @@ export class BoardsToolBarItem extends React.Component<BoardsToolBarItem.Props, 
         const { coords, availableBoards } = this.state;
         const boardsConfig = this.props.boardsServiceClient.boardsConfig;
         const title = BoardsConfig.Config.toString(boardsConfig, { default: 'no board selected' });
+        const decorator = (() => {
+            const selectedBoard = availableBoards.find(({ selected }) => selected);
+            if (!selectedBoard) {
+                return 'fa fa-times notAttached'
+            }
+            if (selectedBoard.state === AvailableBoard.State.guessed) {
+                return 'fa fa-exclamation-triangle guessed'
+            }
+            return ''
+        })();
 
         return <React.Fragment>
             <div className='arduino-boards-toolbar-item-container'>
                 <div className='arduino-boards-toolbar-item' title={title}>
                     <div className='inner-container' onClick={this.show}>
-                        <span className={!availableBoards.some(({ selected }) => selected) ? 'fa fa-times notAttached' : ''} />
+                        <span className={decorator} />
                         <div className='label noWrapInfo'>
                             <div className='noWrapInfo noselect'>
                                 {title}
@@ -144,9 +154,16 @@ export class BoardsToolBarItem extends React.Component<BoardsToolBarItem.Props, 
                 items={availableBoards.map(board => ({
                     ...board,
                     onClick: () => {
-                        this.props.boardsServiceClient.boardsConfig = {
-                            selectedBoard: board,
-                            selectedPort: board.port
+                        if (board.state === AvailableBoard.State.incomplete) {
+                            this.props.boardsServiceClient.boardsConfig = {
+                                selectedPort: board.port
+                            };
+                            this.openDialog();
+                        } else {
+                            this.props.boardsServiceClient.boardsConfig = {
+                                selectedBoard: board,
+                                selectedPort: board.port
+                            }
                         }
                     }
                 }))}
