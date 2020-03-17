@@ -21,21 +21,24 @@ export namespace AttachedBoardsChangeEvent {
             ports: Port[]
         }
     }> {
-        const diff = <T>(left: T[], right: T[]) => {
-            return left.filter(item => right.indexOf(item) === -1);
+        // In `lefts` AND not in `rights`.
+        const diff = <T>(lefts: T[], rights: T[], sameAs: (left: T, right: T) => boolean) => {
+            return lefts.filter(left => rights.findIndex(right => sameAs(left, right)) === -1);
         }
         const { boards: newBoards } = event.newState;
         const { boards: oldBoards } = event.oldState;
         const { ports: newPorts } = event.newState;
         const { ports: oldPorts } = event.oldState;
+        const boardSameAs = (left: Board, right: Board) => Board.sameAs(left, right);
+        const portSameAs = (left: Port, right: Port) => Port.sameAs(left, right);
         return {
             detached: {
-                boards: diff(oldBoards, newBoards),
-                ports: diff(oldPorts, newPorts)
+                boards: diff(oldBoards, newBoards, boardSameAs),
+                ports: diff(oldPorts, newPorts, portSameAs)
             },
             attached: {
-                boards: diff(newBoards, oldBoards),
-                ports: diff(newPorts, oldPorts)
+                boards: diff(newBoards, oldBoards, boardSameAs),
+                ports: diff(newPorts, oldPorts, portSameAs)
             }
         };
     }
@@ -162,12 +165,18 @@ export namespace Port {
         return false;
     }
 
-    export function sameAs(left: Port | undefined, right: string | undefined) {
+    export function sameAs(left: Port | undefined, right: Port | string | undefined) {
         if (left && right) {
             if (left.protocol !== 'serial') {
-                console.log(`Unexpected protocol for port: ${JSON.stringify(left)}. Ignoring protocol, comparing addresses with ${right}.`);
+                console.log(`Unexpected protocol for 'left' port: ${JSON.stringify(left)}. Ignoring 'protocol', comparing 'addresses' with ${JSON.stringify(right)}.`);
             }
-            return left.address === right;
+            if (typeof right === 'string') {
+                return left.address === right;
+            }
+            if (right.protocol !== 'serial') {
+                console.log(`Unexpected protocol for 'right' port: ${JSON.stringify(right)}. Ignoring 'protocol', comparing 'addresses' with ${JSON.stringify(left)}.`);
+            }
+            return left.address === right.address;
         }
         return false;
     }
@@ -305,6 +314,7 @@ export namespace Board {
 
 }
 
+// TODO: remove! Introduce `port?: Port` on `Board` instead.
 export interface AttachedSerialBoard extends Board {
     port: string;
 }

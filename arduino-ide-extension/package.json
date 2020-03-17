@@ -99,8 +99,8 @@
   ],
   "theiaExtensions": [
     {
-      "backend": "lib/node/arduino-backend-module",
-      "frontend": "lib/browser/arduino-frontend-module"
+      "backend": "lib/node/arduino-ide-backend-module",
+      "frontend": "lib/browser/arduino-ide-frontend-module"
     },
     {
       "frontend": "lib/browser/menu/browser-arduino-menu-module",

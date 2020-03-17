@@ -218,8 +218,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             render: () => <BoardsToolBarItem
                 key='boardsToolbarItem'
                 commands={this.commandRegistry}
-                boardsServiceClient={this.boardsServiceClient}
-                boardService={this.boardsService} />,
+                boardsServiceClient={this.boardsServiceClient} />,
             isVisible: widget => ArduinoToolbar.is(widget) && widget.side === 'left',
             priority: 2
         });

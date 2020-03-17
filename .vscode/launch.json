@@ -104,6 +104,6 @@
       "smartStep": true,
       "internalConsoleOptions": "openOnSessionStart",
       "outputCapture": "std"
-    },
+    }
   ]
 }

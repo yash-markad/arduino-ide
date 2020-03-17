@@ -147,8 +147,14 @@ export default new ContainerModule((bind: interfaces.Bind, unbind: interfaces.Un
     // Boards service client to receive and delegate notifications from the backend.
     bind(BoardsServiceClientImpl).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(BoardsServiceClientImpl);
-    bind(BoardsServiceClient).toDynamicValue(context => {
+    bind(BoardsServiceClient).toDynamicValue(async context => {
         const client = context.container.get(BoardsServiceClientImpl);
+        const service = context.container.get<BoardsService>(BoardsService);
+        const [{ boards: attachedBoards }, { ports: availablePorts }] = await Promise.all([
+            service.getAttachedBoards(),
+            service.getAvailablePorts()
+        ]);
+        client.init({ attachedBoards, availablePorts });
         WebSocketConnectionProvider.createProxy(context.container, BoardsServicePath, client);
         return client;
     }).inSingletonScope();

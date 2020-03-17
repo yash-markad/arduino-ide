@@ -5,7 +5,7 @@ import { MessageService } from '@theia/core/lib/common/message-service';
 import { LocalStorageService } from '@theia/core/lib/browser/storage-service';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser/frontend-application';
 import { RecursiveRequired } from '../../common/types';
-import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, AttachedSerialBoard, Board, Port, BoardUninstalledEvent } from '../../common/protocol/boards-service';
+import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, AttachedSerialBoard, Board, Port, BoardUninstalledEvent } from '../../common/protocol';
 import { BoardsConfig } from './boards-config';
 
 @injectable()
@@ -24,6 +24,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     protected readonly onBoardUninstalledEmitter = new Emitter<BoardUninstalledEvent>();
     protected readonly onAttachedBoardsChangedEmitter = new Emitter<AttachedBoardsChangeEvent>();
     protected readonly onSelectedBoardsConfigChangedEmitter = new Emitter<BoardsConfig.Config>();
+    protected readonly onAvailableBoardsChangedEmitter = new Emitter<AvailableBoard[]>();
 
     /**
      * Used for the auto-reconnecting. Sometimes, the attached board gets disconnected after uploading something to it.
@@ -34,6 +35,9 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
      */
     protected latestValidBoardsConfig: RecursiveRequired<BoardsConfig.Config> | undefined = undefined;
     protected _boardsConfig: BoardsConfig.Config = {};
+    protected _attachedBoards: Board[] = []; // This does not contain the `Unknown` boards. They're visible from the available ports only.
+    protected _availablePorts: Port[] = [];
+    protected _availableBoards: AvailableBoard[] = [];
 
     /**
      * Event when the state of the attached/detached boards has changed. For instance, the user have detached a physical board.
@@ -49,9 +53,20 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
      * This even also emitted when the board package for the currently selected board was uninstalled.
      */
     readonly onBoardsConfigChanged = this.onSelectedBoardsConfigChangedEmitter.event;
+    readonly onAvailableBoardsChanged = this.onAvailableBoardsChangedEmitter.event;
 
     async onStart(): Promise<void> {
         return this.loadState();
+    }
+
+    /**
+     * When the FE connects to the BE, the BE stets the known boards and ports.\
+     * This is a DI workaround for not being able to inject the service into the client.
+     */
+    init({ attachedBoards, availablePorts }: { attachedBoards: Board[], availablePorts: Port[] }): void {
+        this._attachedBoards = attachedBoards;
+        this._availablePorts = availablePorts;
+        this.reconcileAvailableBoards();
     }
 
     notifyAttachedBoardsChanged(event: AttachedBoardsChangeEvent): void {
@@ -59,7 +74,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         const { detached, attached } = AttachedBoardsChangeEvent.diff(event);
         const { selectedPort, selectedBoard } = this.boardsConfig;
         this.onAttachedBoardsChangedEmitter.fire(event);
-        // Dynamically unset the port if is not available anymore. A port can be "detached" when removing a board.
+        // Dynamically unset the port if is not available anymore. A port can be "detached" when unplugging a board.
         if (detached.ports.some(port => Port.equals(selectedPort, port))) {
             this.boardsConfig = {
                 selectedBoard,
@@ -68,6 +83,9 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         }
         // Try to reconnect.
         this.tryReconnect(attached.boards, attached.ports);
+        this._attachedBoards = event.newState.boards;
+        this._availablePorts = event.newState.ports;
+        this.reconcileAvailableBoards();
     }
 
     async tryReconnect(attachedBoards: Board[], availablePorts: Port[]): Promise<boolean> {
@@ -141,7 +159,10 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         if (this.canUploadTo(this._boardsConfig)) {
             this.latestValidBoardsConfig = this._boardsConfig;
         }
-        this.saveState().finally(() => this.onSelectedBoardsConfigChangedEmitter.fire(this._boardsConfig));
+        this.saveState().finally(() => {
+            this.onSelectedBoardsConfigChangedEmitter.fire(this._boardsConfig);
+            this.reconcileAvailableBoards();
+        });
     }
 
     get boardsConfig(): BoardsConfig.Config {
@@ -170,7 +191,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     }
 
     /**
-     * `true` if the `canVerify` and the `config.selectedPort` is also set with FQBN, hence can upload to board. Otherwise, `false`.
+     * `true` if `canVerify`, the board has an FQBN and the `config.selectedPort` is also set, hence can upload to board. Otherwise, `false`.
      */
     canUploadTo(
         config: BoardsConfig.Config | undefined = this.boardsConfig,
@@ -198,8 +219,84 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         return true;
     }
 
+    get availableBoards(): AvailableBoard[] {
+        return this._availableBoards;
+    }
+
+    protected async reconcileAvailableBoards(): Promise<void> {
+        const attachedBoards = this._attachedBoards;
+        const availablePorts = this._availablePorts;
+        const boardsConfig = this.boardsConfig;
+        const currentAvailableBoards = this._availableBoards;
+        const availableBoards: AvailableBoard[] = [];
+
+        const availableBoardPorts = availablePorts.filter(Port.isBoardPort);
+        const attachedSerialBoards = attachedBoards.filter(AttachedSerialBoard.is);
+        for (const boardPort of availableBoardPorts) {
+            let state = AvailableBoard.State.incomplete; // Initial pessimism.
+            let board = attachedSerialBoards.find(({ port }) => Port.sameAs(boardPort, port));
+            if (board) {
+                state = AvailableBoard.State.recognized;
+            } else {
+                // If the selected board is not recognized because it is a 3rd party board: https://github.com/arduino/arduino-cli/issues/623
+                // We still want to show it without the red X in the boards toolbar: https://github.com/arduino/arduino-pro-ide/issues/198#issuecomment-599355836
+                const lastSelectedBoard = await this.getLastSelectedBoardOnPort(boardPort);
+                if (lastSelectedBoard) {
+                    board = {
+                        ...lastSelectedBoard,
+                        port: Port.toString(boardPort)
+                    };
+                    state = AvailableBoard.State.guessed;
+                }
+            }
+            if (!board) {
+                availableBoards.push({ name: 'Unknown', port: boardPort, state });
+            } else {
+                const selected = BoardsConfig.Config.sameAs(boardsConfig, board);
+                availableBoards.push({ ...board, state, selected, port: boardPort });
+            }
+        }
+
+        const sortedAvailableBoards = availableBoards.sort(AvailableBoard.COMPARATOR);
+        let hasChanged = sortedAvailableBoards.length !== currentAvailableBoards.length;
+        if (!hasChanged) {
+            for (let i = 0; i < sortedAvailableBoards.length; i++) {
+                hasChanged = AvailableBoard.COMPARATOR(sortedAvailableBoards[i], currentAvailableBoards[i]) !== 0;
+                if (hasChanged) {
+                    break;
+                }
+            }
+        }
+        if (hasChanged) {
+            this._availableBoards = sortedAvailableBoards;
+            this.onAvailableBoardsChangedEmitter.fire(this._availableBoards);
+        }
+    }
+
+    async getLastSelectedBoardOnPort(port: Port | string | undefined): Promise<Board | undefined> {
+        if (!port) {
+            return undefined;
+        }
+        const key = this.getLastSelectedBoardOnPortKey(port);
+        return this.storageService.getData<Board>(key);
+    }
+
     protected async saveState(): Promise<void> {
+        // We save the port with the selected board name/FQBN, to be able to guess a better board name.
+        // Required when the attached board belongs to a 3rd party boards package, and neither the name, nor
+        // the FQBN can be retrieved with a `board list` command.
+        // https://github.com/arduino/arduino-cli/issues/623
+        const { selectedBoard, selectedPort } = this.boardsConfig;
+        if (selectedBoard && selectedPort) {
+            const key = this.getLastSelectedBoardOnPortKey(selectedPort);
+            await this.storageService.setData(key, selectedBoard);
+        }
         await this.storageService.setData('latest-valid-boards-config', this.latestValidBoardsConfig);
+    }
+
+    protected getLastSelectedBoardOnPortKey(port: Port | string): string {
+        // TODO: we lose the port's `protocol` info (`serial`, `network`, etc.) here if the `port` is a `string`.
+        return `last-selected-board-on-port-${typeof port === 'string' ? port : Port.toString(port)}`;
     }
 
     protected async loadState(): Promise<void> {
@@ -212,4 +309,59 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         }
     }
 
+}
+
+/**
+ * Representation of a ready-to-use board configured on the FE. An available board is not
+ * necessarily recognized by the CLI (e.g.: it is a 3rd party board) or correctly configured, but
+ * it has the selected board and a associated port.
+ */
+export interface AvailableBoard extends Board {
+    readonly state: AvailableBoard.State;
+    readonly selected?: boolean;
+    readonly port: Port;
+}
+
+export namespace AvailableBoard {
+
+    export enum State {
+        /**
+         * Retrieved from the CLI via the `board list` command.
+         */
+        'recognized',
+        /**
+         * Guessed the name/FQBN of the board from the available board ports (3rd party).
+         */
+        'guessed',
+        /**
+         * We do not know anything about this board, probably a 3rd party. The user has not selected a board for this port yet.
+         */
+        'incomplete'
+    }
+
+    export const COMPARATOR = (left: AvailableBoard, right: AvailableBoard) => {
+        let result = left.name.localeCompare(right.name);
+        if (result !== 0) {
+            return result;
+        }
+        if (left.fqbn && right.fqbn) {
+            result = left.name.localeCompare(right.name);
+            if (result !== 0) {
+                return result;
+            }
+        }
+        if (left.port && right.port) {
+            result = Port.compare(left.port, right.port);
+            if (result !== 0) {
+                return result;
+            }
+        }
+        if (!!left.selected && !right.selected) {
+            return -1;
+        }
+        if (!!right.selected && !left.selected) {
+            return 1;
+        }
+        return left.state - right.state;
+    }
 }
