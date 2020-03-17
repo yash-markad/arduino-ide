@@ -36,11 +36,11 @@ export abstract class Item<T> extends React.Component<{
     selected: boolean,
     onClick: (item: T) => void,
     missing?: boolean,
-    detail?: string
+    details?: string
 }> {
 
     render(): React.ReactNode {
-        const { selected, label, missing, detail } = this.props;
+        const { selected, label, missing, details } = this.props;
         const classNames = ['item'];
         if (selected) {
             classNames.push('selected');
@@ -48,11 +48,11 @@ export abstract class Item<T> extends React.Component<{
         if (missing === true) {
             classNames.push('missing')
         }
-        return <div onClick={this.onClick} className={classNames.join(' ')} title={`${label}${!detail ? '' : detail}`}>
+        return <div onClick={this.onClick} className={classNames.join(' ')} title={`${label}${!details ? '' : details}`}>
             <div className='label'>
                 {label}
             </div>
-            {!detail ? '' : <div className='detail'>{detail}</div>}
+            {!details ? '' : <div className='details'>{details}</div>}
             {!selected ? '' : <div className='selected-icon'><i className='fa fa-check' /></div>}
         </div>;
     }
@@ -127,17 +127,7 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
     }
 
     protected queryBoards = (options: { query?: string } = {}): Promise<{ searchResults: Array<Board & { packageName: string }> }> => {
-        const { boardsService } = this.props;
-        const query = (options.query || '').toLocaleLowerCase();
-        return new Promise<{ searchResults: Array<Board & { packageName: string }> }>(resolve => {
-            boardsService.search(options)
-                .then(({ items }) => items
-                    .map(item => item.boards.map(board => ({ ...board, packageName: item.name })))
-                    .reduce((acc, curr) => acc.concat(curr), [])
-                    .filter(board => board.name.toLocaleLowerCase().indexOf(query) !== -1)
-                    .sort(Board.compare))
-                .then(searchResults => resolve({ searchResults }));
-        });
+        return this.props.boardsService.searchBoards(options);
     }
 
     protected get attachedBoards(): Promise<{ boards: Board[] }> {
@@ -148,13 +138,9 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
         return this.props.boardsService.getAvailablePorts();
     }
 
-    protected queryPorts = (availablePorts: Promise<{ ports: Port[] }> = this.availablePorts) => {
-        return new Promise<{ knownPorts: Port[] }>(resolve => {
-            availablePorts
-                .then(({ ports }) => ports
-                    .sort(Port.compare))
-                .then(knownPorts => resolve({ knownPorts }));
-        });
+    protected queryPorts = async (availablePorts: Promise<{ ports: Port[] }> = this.availablePorts) => {
+        const { ports } = await availablePorts;
+        return { knownPorts: ports.sort(Port.compare) };
     }
 
     protected toggleFilterPorts = () => {
@@ -196,41 +182,20 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
 
     protected renderBoards(): React.ReactNode {
         const { selectedBoard, searchResults } = this.state;
-        // Board names are not unique. We show the corresponding core name as a detail.
-        // https://github.com/arduino/arduino-cli/pull/294#issuecomment-513764948
-        const distinctBoardNames = new Map<string, number>();
-        for (const { name } of searchResults) {
-            const counter = distinctBoardNames.get(name) || 0;
-            distinctBoardNames.set(name, counter + 1);
-        }
-
-        // Due to the non-unique board names, we have to check the package name as well.
-        const selected = (board: Board & { packageName: string }) => {
-            if (!!selectedBoard) {
-                if (Board.equals(board, selectedBoard)) {
-                    if ('packageName' in selectedBoard) {
-                        return board.packageName === (selectedBoard as any).packageName;
-                    }
-                    return true;
-                }
-            }
-            return false;
-        }
-
         return <React.Fragment>
             <div className='search'>
                 <input type='search' className='theia-input' placeholder='SEARCH BOARD' onChange={this.updateBoards} ref={this.focusNodeSet} />
                 <i className='fa fa-search'></i>
             </div>
             <div className='boards list'>
-                {this.state.searchResults.map(board => <Item<Board & { packageName: string }>
+                {Board.decorateBoards(selectedBoard, searchResults).map(board => <Item<Board & { packageName: string }>
                     key={`${board.name}-${board.packageName}`}
                     item={board}
                     label={board.name}
-                    detail={(distinctBoardNames.get(board.name) || 0) > 1 ? ` - ${board.packageName}` : undefined}
-                    selected={selected(board)}
+                    details={board.details}
+                    selected={board.selected}
                     onClick={this.selectBoard}
-                    missing={!Board.installed(board)}
+                    missing={board.missing}
                 />)}
             </div>
         </React.Fragment>;

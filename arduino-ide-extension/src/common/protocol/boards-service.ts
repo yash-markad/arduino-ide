@@ -68,6 +68,7 @@ export interface BoardsService extends Installable<BoardsPackage>, Searchable<Bo
     getBoardDetails(options: { fqbn: string }): Promise<BoardDetails>;
     getBoardPackage(options: { id: string }): Promise<BoardsPackage | undefined>;
     getContainerBoardPackage(options: { fqbn: string }): Promise<BoardsPackage | undefined>;
+    searchBoards(options: { query?: string }): Promise<{ searchResults: Array<Board & { packageName: string }> }>;
 }
 
 export interface Port {
@@ -311,6 +312,38 @@ export namespace Board {
         const fqbn = options && options.useFqbn && board.fqbn ? ` [${board.fqbn}]` : '';
         return `${board.name}${fqbn}`;
     }
+
+    export function decorateBoards(
+        selectedBoard: Board | undefined,
+        searchResults: Array<Board & { packageName: string }>): Array<Board & { selected: boolean, missing: boolean, packageName: string, details?: string }> {
+        // Board names are not unique. We show the corresponding core name as a detail.
+        // https://github.com/arduino/arduino-cli/pull/294#issuecomment-513764948
+        const distinctBoardNames = new Map<string, number>();
+        for (const { name } of searchResults) {
+            const counter = distinctBoardNames.get(name) || 0;
+            distinctBoardNames.set(name, counter + 1);
+        }
+
+        // Due to the non-unique board names, we have to check the package name as well.
+        const selected = (board: Board & { packageName: string }) => {
+            if (!!selectedBoard) {
+                if (Board.equals(board, selectedBoard)) {
+                    if ('packageName' in selectedBoard) {
+                        return board.packageName === (selectedBoard as any).packageName;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+        return searchResults.map(board => ({
+            ...board,
+            details: (distinctBoardNames.get(board.name) || 0) > 1 ? ` - ${board.packageName}` : undefined,
+            selected: selected(board),
+            missing: !installed(board)
+        }));
+    }
+
 
 }
 

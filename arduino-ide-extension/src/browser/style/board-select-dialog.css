@@ -97,7 +97,7 @@ div#select-board-dialog .selectBoardContainer .body .list .item.selected i {
     margin-left: auto;
 }
 
-#select-board-dialog .selectBoardContainer .body .list .item .detail {
+#select-board-dialog .selectBoardContainer .body .list .item .details {
     font-size: var(--theia-ui-font-size1);
     opacity: var(--theia-mod-disabled-opacity);
     width: 155px; /* used heuristics for the calculation */
