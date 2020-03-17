@@ -71,7 +71,11 @@ describe('config-file-validator', () => {
             new ArduinoDaemonImpl().getExecPath()
                 .then(execPath => spawnCommand(execPath, ['config', 'dump']))
                 .then(content => safeLoad(content))
-                .then(config => resolve(config))
+                .then(config => {
+                    // TODO: enable `telemetry` entry.
+                    delete config.telemetry;
+                    resolve(config);
+                });
         });
     }
 
