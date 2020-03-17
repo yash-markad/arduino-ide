@@ -71,7 +71,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
     notifyAttachedBoardsChanged(event: AttachedBoardsChangeEvent): void {
         this.logger.info('Attached boards and available ports changed: ', JSON.stringify(event));
-        const { detached, attached } = AttachedBoardsChangeEvent.diff(event);
+        const { detached } = AttachedBoardsChangeEvent.diff(event);
         const { selectedPort, selectedBoard } = this.boardsConfig;
         this.onAttachedBoardsChangedEmitter.fire(event);
         // Dynamically unset the port if is not available anymore. A port can be "detached" when unplugging a board.
@@ -81,16 +81,14 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
                 selectedPort: undefined
             };
         }
-        // Try to reconnect.
-        this.tryReconnect(attached.boards, attached.ports);
         this._attachedBoards = event.newState.boards;
         this._availablePorts = event.newState.ports;
-        this.reconcileAvailableBoards();
+        this.reconcileAvailableBoards().then(() => this.tryReconnect());
     }
 
-    async tryReconnect(attachedBoards: Board[], availablePorts: Port[]): Promise<boolean> {
+    async tryReconnect(): Promise<boolean> {
         if (this.latestValidBoardsConfig && !this.canUploadTo(this.boardsConfig)) {
-            for (const board of attachedBoards.filter(AttachedSerialBoard.is)) {
+            for (const board of this.availableBoards) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn
                     && this.latestValidBoardsConfig.selectedBoard.name === board.name
                     && Port.sameAs(this.latestValidBoardsConfig.selectedPort, board.port)) {
@@ -101,13 +99,13 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
             }
             // If we could not find an exact match, we compare the board FQBN-name pairs and ignore the port, as it might have changed.
             // See documentation on `latestValidBoardsConfig`.
-            for (const board of attachedBoards.filter(AttachedSerialBoard.is)) {
+            for (const board of this.availableBoards) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn
                     && this.latestValidBoardsConfig.selectedBoard.name === board.name) {
 
                     this.boardsConfig = {
                         ...this.latestValidBoardsConfig,
-                        selectedPort: availablePorts.find(port => Port.sameAs(port, board.port))
+                        selectedPort: board.port
                     };
                     return true;
                 }
