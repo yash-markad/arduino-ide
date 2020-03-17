@@ -85,10 +85,12 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
         this.props.boardsService.getAvailablePorts().then(({ ports }) => this.updatePorts(ports));
         const { boardsServiceClient, coreServiceClient, daemonClient } = this.props;
         this.toDispose.pushAll([
-            boardsServiceClient.onBoardsChanged(event => this.updatePorts(event.newState.ports, AttachedBoardsChangeEvent.diff(event).detached.ports)),
+            boardsServiceClient.onAttachedBoardsChanged(event => this.updatePorts(event.newState.ports, AttachedBoardsChangeEvent.diff(event).detached.ports)),
             boardsServiceClient.onBoardsConfigChanged(({ selectedBoard, selectedPort }) => {
                 this.setState({ selectedBoard, selectedPort }, () => this.fireConfigChanged());
             }),
+            boardsServiceClient.onBoardsPackageInstalled(() => this.updateBoards(this.state.query)),
+            boardsServiceClient.onBoardsPackageUninstalled(() => this.updateBoards(this.state.query)),
             coreServiceClient.onIndexUpdated(() => this.updateBoards(this.state.query)),
             daemonClient.onDaemonStarted(() => this.updateBoards(this.state.query)),
             daemonClient.onDaemonStopped(() => this.setState({ searchResults: [] }))

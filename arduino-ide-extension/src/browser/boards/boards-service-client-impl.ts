@@ -20,10 +20,10 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     @inject(LocalStorageService)
     protected storageService: LocalStorageService;
 
-    protected readonly onBoardInstalledEmitter = new Emitter<BoardInstalledEvent>();
-    protected readonly onBoardUninstalledEmitter = new Emitter<BoardUninstalledEvent>();
+    protected readonly onBoardsPackageInstalledEmitter = new Emitter<BoardInstalledEvent>();
+    protected readonly onBoardsPackageUninstalledEmitter = new Emitter<BoardUninstalledEvent>();
     protected readonly onAttachedBoardsChangedEmitter = new Emitter<AttachedBoardsChangeEvent>();
-    protected readonly onSelectedBoardsConfigChangedEmitter = new Emitter<BoardsConfig.Config>();
+    protected readonly onBoardsConfigChangedEmitter = new Emitter<BoardsConfig.Config>();
     protected readonly onAvailableBoardsChangedEmitter = new Emitter<AvailableBoard[]>();
 
     /**
@@ -42,17 +42,17 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     /**
      * Event when the state of the attached/detached boards has changed. For instance, the user have detached a physical board.
      */
-    readonly onBoardsChanged = this.onAttachedBoardsChangedEmitter.event;
-    readonly onBoardInstalled = this.onBoardInstalledEmitter.event;
-    readonly onBoardUninstalled = this.onBoardUninstalledEmitter.event;
+    readonly onAttachedBoardsChanged = this.onAttachedBoardsChangedEmitter.event;
+    readonly onBoardsPackageInstalled = this.onBoardsPackageInstalledEmitter.event;
+    readonly onBoardsPackageUninstalled = this.onBoardsPackageUninstalledEmitter.event;
     /**
-     * Unlike `onBoardsChanged` this even fires when the user modifies the selected board in the IDE.\
+     * Unlike `onAttachedBoardsChanged` this even fires when the user modifies the selected board in the IDE.\
      * This even also fires, when the boards package was not available for the currently selected board,
      * and the user installs the board package. Note: installing a board package will set the `fqbn` of the
      * currently selected board.\
      * This even also emitted when the board package for the currently selected board was uninstalled.
      */
-    readonly onBoardsConfigChanged = this.onSelectedBoardsConfigChangedEmitter.event;
+    readonly onBoardsConfigChanged = this.onBoardsConfigChangedEmitter.event;
     readonly onAvailableBoardsChanged = this.onAvailableBoardsChangedEmitter.event;
 
     async onStart(): Promise<void> {
@@ -116,7 +116,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
     notifyBoardInstalled(event: BoardInstalledEvent): void {
         this.logger.info('Board installed: ', JSON.stringify(event));
-        this.onBoardInstalledEmitter.fire(event);
+        this.onBoardsPackageInstalledEmitter.fire(event);
         const { selectedBoard } = this.boardsConfig;
         const { installedVersion, id } = event.pkg;
         if (selectedBoard) {
@@ -133,7 +133,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
     notifyBoardUninstalled(event: BoardUninstalledEvent): void {
         this.logger.info('Board uninstalled: ', JSON.stringify(event));
-        this.onBoardUninstalledEmitter.fire(event);
+        this.onBoardsPackageUninstalledEmitter.fire(event);
         const { selectedBoard } = this.boardsConfig;
         if (selectedBoard && selectedBoard.fqbn) {
             const uninstalledBoard = event.pkg.boards.find(({ name }) => name === selectedBoard.name);
@@ -158,7 +158,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
             this.latestValidBoardsConfig = this._boardsConfig;
         }
         this.saveState().finally(() => {
-            this.onSelectedBoardsConfigChangedEmitter.fire(this._boardsConfig);
+            this.onBoardsConfigChangedEmitter.fire(this._boardsConfig);
             this.reconcileAvailableBoards();
         });
     }
@@ -255,15 +255,19 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
             }
         }
 
+        if (boardsConfig.selectedBoard && !availableBoards.some(({ selected }) => selected)) {
+            availableBoards.push({
+                ...boardsConfig.selectedBoard,
+                port: boardsConfig.selectedPort,
+                selected: true,
+                state: AvailableBoard.State.incomplete
+            });
+        }
+
         const sortedAvailableBoards = availableBoards.sort(AvailableBoard.COMPARATOR);
         let hasChanged = sortedAvailableBoards.length !== currentAvailableBoards.length;
-        if (!hasChanged) {
-            for (let i = 0; i < sortedAvailableBoards.length; i++) {
-                hasChanged = AvailableBoard.COMPARATOR(sortedAvailableBoards[i], currentAvailableBoards[i]) !== 0;
-                if (hasChanged) {
-                    break;
-                }
-            }
+        for (let i = 0; !hasChanged && i < sortedAvailableBoards.length; i++) {
+            hasChanged = AvailableBoard.COMPARATOR(sortedAvailableBoards[i], currentAvailableBoards[i]) !== 0;
         }
         if (hasChanged) {
             this._availableBoards = sortedAvailableBoards;
@@ -271,7 +275,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         }
     }
 
-    async getLastSelectedBoardOnPort(port: Port | string | undefined): Promise<Board | undefined> {
+    protected async getLastSelectedBoardOnPort(port: Port | string | undefined): Promise<Board | undefined> {
         if (!port) {
             return undefined;
         }
@@ -310,14 +314,14 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 }
 
 /**
- * Representation of a ready-to-use board configured on the FE. An available board is not
- * necessarily recognized by the CLI (e.g.: it is a 3rd party board) or correctly configured, but
- * it has the selected board and a associated port.
+ * Representation of a ready-to-use board, configured by the user. Not all of the available boards are
+ * necessarily recognized by the CLI (e.g.: it is a 3rd party board) or correctly configured but ready for `verify`.
+ * If it has the selected board and a associated port, it can be used for `upload`.
  */
 export interface AvailableBoard extends Board {
     readonly state: AvailableBoard.State;
     readonly selected?: boolean;
-    readonly port: Port;
+    readonly port?: Port;
 }
 
 export namespace AvailableBoard {

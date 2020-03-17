@@ -56,7 +56,7 @@ export class BoardsDropDown extends React.Component<BoardsDropDown.Props> {
                 label: 'Select Other Board & Port',
                 onClick: () => this.props.openBoardsConfig()
             })}
-            {items.map(({ name, port, selected, onClick }) => ({ label: `${name} at ${Port.toString(port)}`, selected, onClick })).map(this.renderItem)}
+            {items.map(({ name, port, selected, onClick }) => ({ label: `${name}${!!port ? ` at ${Port.toString(port)}` : ''}`, selected, onClick })).map(this.renderItem)}
         </div>
     }
 

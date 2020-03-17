@@ -381,9 +381,8 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
                 throw new Error('No boards selected. Please select a board.');
             }
             if (!boardsConfig.selectedBoard.fqbn) {
-                throw new Error(`No core is installed for ${boardsConfig.selectedBoard.name}. Please install the board.`);
+                throw new Error(`No core is installed for the '${boardsConfig.selectedBoard.name}' board. Please install the core.`);
             }
-            // Reveal the Output view asynchronously (don't await it)
             const fqbn = await this.boardsConfigStore.appendConfigToFqbn(boardsConfig.selectedBoard.fqbn);
             this.outputContribution.openView({ reveal: true });
             await this.coreService.compile({
@@ -422,9 +421,8 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
                 throw new Error('No ports selected. Please select a port.');
             }
             if (!boardsConfig.selectedBoard.fqbn) {
-                throw new Error(`No core is installed for ${boardsConfig.selectedBoard.name}. Please install the board.`);
+                throw new Error(`No core is installed for the '${boardsConfig.selectedBoard.name}' board. Please install the core.`);
             }
-            // Reveal the Output view asynchronously (don't await it)
             this.outputContribution.openView({ reveal: true });
             const fqbn = await this.boardsConfigStore.appendConfigToFqbn(boardsConfig.selectedBoard.fqbn);
             await this.coreService.upload({

@@ -26,7 +26,7 @@ export class BoardsConfigStore implements FrontendApplicationContribution {
     protected readonly onChangedEmitter = new Emitter<void>();
 
     onStart(): void {
-        this.boardsServiceClient.onBoardInstalled(async ({ pkg }) => {
+        this.boardsServiceClient.onBoardsPackageInstalled(async ({ pkg }) => {
             const { installedVersion: version } = pkg;
             if (!version) {
                 return;

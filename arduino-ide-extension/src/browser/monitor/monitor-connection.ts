@@ -110,7 +110,7 @@ export class MonitorConnection {
             }
         });
         this.boardsServiceClient.onBoardsConfigChanged(this.handleBoardConfigChange.bind(this));
-        this.boardsServiceClient.onBoardsChanged(event => {
+        this.boardsServiceClient.onAttachedBoardsChanged(event => {
             if (this.autoConnect && this.connected) {
                 const { boardsConfig } = this.boardsServiceClient;
                 if (this.boardsServiceClient.canUploadTo(boardsConfig, { silent: false })) {
