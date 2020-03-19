@@ -71,24 +71,24 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
     notifyAttachedBoardsChanged(event: AttachedBoardsChangeEvent): void {
         this.logger.info('Attached boards and available ports changed: ', JSON.stringify(event));
-        const { detached } = AttachedBoardsChangeEvent.diff(event);
-        const { selectedPort, selectedBoard } = this.boardsConfig;
-        this.onAttachedBoardsChangedEmitter.fire(event);
-        // Dynamically unset the port if is not available anymore. A port can be "detached" when unplugging a board.
-        if (detached.ports.some(port => Port.equals(selectedPort, port))) {
-            this.boardsConfig = {
-                selectedBoard,
-                selectedPort: undefined
-            };
-        }
         this._attachedBoards = event.newState.boards;
+        this.onAttachedBoardsChangedEmitter.fire(event);
         this._availablePorts = event.newState.ports;
         this.reconcileAvailableBoards().then(() => this.tryReconnect());
     }
 
     protected async tryReconnect(): Promise<boolean> {
+        const { selectedPort, selectedBoard } = this.boardsConfig;
+        // Dynamically unset the port if is not available anymore. A port can be "detached" when unplugging a board.
+        if (!this._availablePorts.some(port => Port.equals(selectedPort, port))) {
+            this.boardsConfig = {
+                selectedBoard,
+                selectedPort: undefined
+            };
+            await this.reconcileAvailableBoards();
+        }
         if (this.latestValidBoardsConfig && !this.canUploadTo(this.boardsConfig)) {
-            for (const board of this.availableBoards) {
+            for (const board of this.availableBoards.filter(({ state }) => state !== AvailableBoard.State.incomplete)) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn
                     && this.latestValidBoardsConfig.selectedBoard.name === board.name
                     && Port.sameAs(this.latestValidBoardsConfig.selectedPort, board.port)) {
@@ -99,7 +99,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
             }
             // If we could not find an exact match, we compare the board FQBN-name pairs and ignore the port, as it might have changed.
             // See documentation on `latestValidBoardsConfig`.
-            for (const board of this.availableBoards) {
+            for (const board of this.availableBoards.filter(({ state }) => state !== AvailableBoard.State.incomplete)) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn
                     && this.latestValidBoardsConfig.selectedBoard.name === board.name) {
 

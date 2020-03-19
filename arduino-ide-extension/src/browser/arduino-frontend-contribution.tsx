@@ -5,7 +5,7 @@ import { EditorWidget } from '@theia/editor/lib/browser/editor-widget';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { CommandContribution, CommandRegistry, Command, CommandHandler } from '@theia/core/lib/common/command';
 import { TabBarToolbarContribution, TabBarToolbarRegistry } from '@theia/core/lib/browser/shell/tab-bar-toolbar';
-import { BoardsService } from '../common/protocol/boards-service';
+import { BoardsService, BoardsServiceClient } from '../common/protocol/boards-service';
 import { ArduinoCommands } from './arduino-commands';
 import { CoreService } from '../common/protocol/core-service';
 import { BoardsServiceClientImpl } from './boards/boards-service-client-impl';
@@ -77,7 +77,11 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
     protected readonly toolOutputServiceClient: ToolOutputServiceClient;
 
     @inject(BoardsServiceClientImpl)
-    protected readonly boardsServiceClient: BoardsServiceClientImpl;
+    protected readonly boardsServiceClientImpl: BoardsServiceClientImpl;
+
+    // Unused but do not remove it. It's required by DI, otherwise `init` method is not called.
+    @inject(BoardsServiceClient)
+    protected readonly boardsServiceClient: BoardsServiceClient;
 
     @inject(SelectionService)
     protected readonly selectionService: SelectionService;
@@ -162,8 +166,8 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
                 text: BoardsConfig.Config.toString(config)
             });
         }
-        this.boardsServiceClient.onBoardsConfigChanged(updateStatusBar);
-        updateStatusBar(this.boardsServiceClient.boardsConfig);
+        this.boardsServiceClientImpl.onBoardsConfigChanged(updateStatusBar);
+        updateStatusBar(this.boardsServiceClientImpl.boardsConfig);
 
         this.registerSketchesInMenu(this.menuRegistry);
     }
@@ -213,7 +217,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             render: () => <BoardsToolBarItem
                 key='boardsToolbarItem'
                 commands={this.commandRegistry}
-                boardsServiceClient={this.boardsServiceClient} />,
+                boardsServiceClient={this.boardsServiceClientImpl} />,
             isVisible: widget => ArduinoToolbar.is(widget) && widget.side === 'left',
             priority: 2
         });
@@ -344,7 +348,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             execute: async () => {
                 const boardsConfig = await this.boardsConfigDialog.open();
                 if (boardsConfig) {
-                    this.boardsServiceClient.boardsConfig = boardsConfig;
+                    this.boardsServiceClientImpl.boardsConfig = boardsConfig;
                 }
             }
         });
@@ -376,7 +380,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
         }
 
         try {
-            const { boardsConfig } = this.boardsServiceClient;
+            const { boardsConfig } = this.boardsServiceClientImpl;
             if (!boardsConfig || !boardsConfig.selectedBoard) {
                 throw new Error('No boards selected. Please select a board.');
             }
@@ -412,7 +416,7 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
         }
 
         try {
-            const { boardsConfig } = this.boardsServiceClient;
+            const { boardsConfig } = this.boardsServiceClientImpl;
             if (!boardsConfig || !boardsConfig.selectedBoard) {
                 throw new Error('No boards selected. Please select a board.');
             }
