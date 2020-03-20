@@ -150,7 +150,7 @@ export default new ContainerModule((bind: interfaces.Bind, unbind: interfaces.Un
     bind(BoardsServiceClient).toDynamicValue(async context => {
         const client = context.container.get(BoardsServiceClientImpl);
         const service = context.container.get<BoardsService>(BoardsService);
-        const [{ boards: attachedBoards }, { ports: availablePorts }] = await Promise.all([
+        const [attachedBoards, availablePorts] = await Promise.all([
             service.getAttachedBoards(),
             service.getAvailablePorts()
         ]);

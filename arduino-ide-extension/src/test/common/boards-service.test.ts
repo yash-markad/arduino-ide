@@ -18,7 +18,8 @@ describe('boards-service', () => {
                         { protocol: 'serial', address: '/dev/cu.usbmodem14601' },
                         { protocol: 'serial', address: '/dev/cu.Bluetooth-Incoming-Port' },
                         { protocol: 'serial', address: '/dev/cu.MALS' },
-                        { protocol: 'serial', address: '/dev/cu.SOC' }]
+                        { protocol: 'serial', address: '/dev/cu.SOC' }
+                    ]
                 },
                 newState: {
                     boards: [
@@ -31,7 +32,8 @@ describe('boards-service', () => {
                         { protocol: 'serial', address: '/dev/cu.usbmodem14601' },
                         { protocol: 'serial', address: '/dev/cu.Bluetooth-Incoming-Port' },
                         { protocol: 'serial', address: '/dev/cu.MALS' },
-                        { protocol: 'serial', address: '/dev/cu.SOC' }]
+                        { protocol: 'serial', address: '/dev/cu.SOC' }
+                    ]
                 }
             };
             const diff = AttachedBoardsChangeEvent.diff(event);

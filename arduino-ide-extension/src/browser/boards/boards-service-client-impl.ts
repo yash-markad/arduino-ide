@@ -1,8 +1,8 @@
-import { injectable, inject } from 'inversify';
+import { injectable, inject, optional } from 'inversify';
 import { Emitter } from '@theia/core/lib/common/event';
 import { ILogger } from '@theia/core/lib/common/logger';
 import { MessageService } from '@theia/core/lib/common/message-service';
-import { LocalStorageService } from '@theia/core/lib/browser/storage-service';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser/frontend-application';
 import { RecursiveRequired } from '../../common/types';
 import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, AttachedSerialBoard, Board, Port, BoardUninstalledEvent } from '../../common/protocol';
@@ -14,11 +14,12 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     @inject(ILogger)
     protected logger: ILogger;
 
+    @optional()
     @inject(MessageService)
     protected messageService: MessageService;
 
-    @inject(LocalStorageService)
-    protected storageService: LocalStorageService;
+    @inject(StorageService)
+    protected storageService: StorageService;
 
     protected readonly onBoardsPackageInstalledEmitter = new Emitter<BoardInstalledEvent>();
     protected readonly onBoardsPackageUninstalledEmitter = new Emitter<BoardUninstalledEvent>();
@@ -179,7 +180,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         }
 
         if (!config.selectedBoard) {
-            if (!options.silent) {
+            if (!options.silent && this.messageService) {
                 this.messageService.warn('No boards selected.', { timeout: 3000 });
             }
             return false;
@@ -201,14 +202,14 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
         const { name } = config.selectedBoard;
         if (!config.selectedPort) {
-            if (!options.silent) {
+            if (!options.silent && this.messageService) {
                 this.messageService.warn(`No ports selected for board: '${name}'.`, { timeout: 3000 });
             }
             return false;
         }
 
         if (!config.selectedBoard.fqbn) {
-            if (!options.silent) {
+            if (!options.silent && this.messageService) {
                 this.messageService.warn(`The FQBN is not available for the selected board ${name}. Do you have the corresponding core installed?`, { timeout: 3000 });
             }
             return false;

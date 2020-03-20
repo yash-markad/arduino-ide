@@ -82,7 +82,7 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
 
     componentDidMount() {
         this.updateBoards();
-        this.props.boardsService.getAvailablePorts().then(({ ports }) => this.updatePorts(ports));
+        this.props.boardsService.getAvailablePorts().then(ports => this.updatePorts(ports));
         const { boardsServiceClient, coreServiceClient, daemonClient } = this.props;
         this.toDispose.pushAll([
             boardsServiceClient.onAttachedBoardsChanged(event => this.updatePorts(event.newState.ports, AttachedBoardsChangeEvent.diff(event).detached.ports)),
@@ -112,11 +112,11 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
             : eventOrQuery.target.value.toLowerCase()
         ).trim();
         this.setState({ query });
-        this.queryBoards({ query }).then(({ searchResults }) => this.setState({ searchResults }));
+        this.queryBoards({ query }).then(searchResults => this.setState({ searchResults }));
     }
 
     protected updatePorts = (ports: Port[] = [], removedPorts: Port[] = []) => {
-        this.queryPorts(Promise.resolve({ ports })).then(({ knownPorts }) => {
+        this.queryPorts(Promise.resolve(ports)).then(({ knownPorts }) => {
             let { selectedPort } = this.state;
             // If the currently selected port is not available anymore, unset the selected port.
             if (removedPorts.some(port => Port.equals(port, selectedPort))) {
@@ -126,20 +126,16 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
         });
     }
 
-    protected queryBoards = (options: { query?: string } = {}): Promise<{ searchResults: Array<Board & { packageName: string }> }> => {
+    protected queryBoards = (options: { query?: string } = {}): Promise<Array<Board & { packageName: string }>> => {
         return this.props.boardsService.searchBoards(options);
     }
 
-    protected get attachedBoards(): Promise<{ boards: Board[] }> {
-        return this.props.boardsService.getAttachedBoards();
-    }
-
-    protected get availablePorts(): Promise<{ ports: Port[] }> {
+    protected get availablePorts(): Promise<Port[]> {
         return this.props.boardsService.getAvailablePorts();
     }
 
-    protected queryPorts = async (availablePorts: Promise<{ ports: Port[] }> = this.availablePorts) => {
-        const { ports } = await availablePorts;
+    protected queryPorts = async (availablePorts: Promise<Port[]> = this.availablePorts) => {
+        const ports = await availablePorts;
         return { knownPorts: ports.sort(Port.compare) };
     }
 

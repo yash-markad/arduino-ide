@@ -63,12 +63,12 @@ export interface BoardsServiceClient {
 export const BoardsServicePath = '/services/boards-service';
 export const BoardsService = Symbol('BoardsService');
 export interface BoardsService extends Installable<BoardsPackage>, Searchable<BoardsPackage>, JsonRpcServer<BoardsServiceClient> {
-    getAttachedBoards(): Promise<{ boards: Board[] }>;
-    getAvailablePorts(): Promise<{ ports: Port[] }>;
+    getAttachedBoards(): Promise<Board[]>;
+    getAvailablePorts(): Promise<Port[]>;
     getBoardDetails(options: { fqbn: string }): Promise<BoardDetails>;
     getBoardPackage(options: { id: string }): Promise<BoardsPackage | undefined>;
     getContainerBoardPackage(options: { fqbn: string }): Promise<BoardsPackage | undefined>;
-    searchBoards(options: { query?: string }): Promise<{ searchResults: Array<Board & { packageName: string }> }>;
+    searchBoards(options: { query?: string }): Promise<Array<Board & { packageName: string }>>;
 }
 
 export interface Port {

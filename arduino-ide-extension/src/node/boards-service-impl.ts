@@ -37,8 +37,8 @@ export class BoardsServiceImpl implements BoardsService {
      * Stores the state of the currently discovered and attached boards.
      * This state is updated via periodical polls. If there diff, a change event will be sent out to the frontend.
      */
-    protected attachedBoards: { boards: Board[] } = { boards: [] };
-    protected availablePorts: { ports: Port[] } = { ports: [] };
+    protected attachedBoards: Board[] = [];
+    protected availablePorts: Port[] = [];
     protected started = new Deferred<void>();
     protected client: BoardsServiceClient | undefined;
 
@@ -49,8 +49,8 @@ export class BoardsServiceImpl implements BoardsService {
             this.doGetAttachedBoardsAndAvailablePorts()
                 .then(({ boards, ports }) => {
                     const update = (oldBoards: Board[], newBoards: Board[], oldPorts: Port[], newPorts: Port[], message: string) => {
-                        this.attachedBoards = { boards: newBoards };
-                        this.availablePorts = { ports: newPorts };
+                        this.attachedBoards = newBoards;
+                        this.availablePorts = newPorts;
                         this.discoveryLogger.info(`${message} - Discovered boards: ${JSON.stringify(newBoards)} and available ports: ${JSON.stringify(newPorts)}`);
                         if (this.client) {
                             this.client.notifyAttachedBoardsChanged({
@@ -76,7 +76,7 @@ export class BoardsServiceImpl implements BoardsService {
                         Promise.all([
                             this.getAttachedBoards(),
                             this.getAvailablePorts()
-                        ]).then(([{ boards: currentBoards }, { ports: currentPorts }]) => {
+                        ]).then(([currentBoards, currentPorts]) => {
                             this.discoveryLogger.trace(`Updating discovered boards... ${JSON.stringify(currentBoards)}`);
                             if (currentBoards.length !== sortedBoards.length || currentPorts.length !== sortedPorts.length) {
                                 update(currentBoards, sortedBoards, currentPorts, sortedPorts, 'Updated discovered boards and available ports.');
@@ -118,12 +118,12 @@ export class BoardsServiceImpl implements BoardsService {
         this.client = undefined;
     }
 
-    async getAttachedBoards(): Promise<{ boards: Board[] }> {
+    async getAttachedBoards(): Promise<Board[]> {
         await this.started.promise;
         return this.attachedBoards;
     }
 
-    async getAvailablePorts(): Promise<{ ports: Port[] }> {
+    async getAvailablePorts(): Promise<Port[]> {
         await this.started.promise;
         return this.availablePorts;
     }
@@ -266,8 +266,8 @@ export class BoardsServiceImpl implements BoardsService {
         if (!expectedId) {
             return undefined;
         }
-        const result = await this.search({ query: expectedId });
-        return result.items.find(({ id }) => id === expectedId);
+        const packages = await this.search({ query: expectedId });
+        return packages.find(({ id }) => id === expectedId);
     }
 
     async getContainerBoardPackage(options: { fqbn: string }): Promise<BoardsPackage | undefined> {
@@ -275,24 +275,23 @@ export class BoardsServiceImpl implements BoardsService {
         if (!expectedFqbn) {
             return undefined;
         }
-        const result = await this.search({});
-        return result.items.find(({ boards }) => boards.some(({ fqbn }) => fqbn === expectedFqbn));
+        const packages = await this.search({});
+        return packages.find(({ boards }) => boards.some(({ fqbn }) => fqbn === expectedFqbn));
     }
 
-    async searchBoards(options: { query?: string }): Promise<{ searchResults: Array<Board & { packageName: string }> }> {
+    async searchBoards(options: { query?: string }): Promise<Array<Board & { packageName: string }>> {
         const query = (options.query || '').toLocaleLowerCase();
-        const { items } = await this.search(options);
-        const searchResults = items.map(item => item.boards.map(board => ({ ...board, packageName: item.name })))
+        const results = await this.search(options);
+        return results.map(item => item.boards.map(board => ({ ...board, packageName: item.name })))
             .reduce((acc, curr) => acc.concat(curr), [])
             .filter(board => board.name.toLocaleLowerCase().indexOf(query) !== -1)
             .sort(Board.compare);
-        return { searchResults };
     }
 
-    async search(options: { query?: string }): Promise<{ items: BoardsPackage[] }> {
+    async search(options: { query?: string }): Promise<BoardsPackage[]> {
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
-            return { items: [] };
+            return [];
         }
         const { client, instance } = coreClient;
 
@@ -369,7 +368,7 @@ export class BoardsServiceImpl implements BoardsService {
             }
         }
 
-        return { items: [...packages.values()] };
+        return [...packages.values()];
     }
 
     async install(options: { item: BoardsPackage, version?: Installable.Version }): Promise<void> {
@@ -403,7 +402,7 @@ export class BoardsServiceImpl implements BoardsService {
         });
         if (this.client) {
             const packages = await this.search({});
-            const updatedPackage = packages.items.find(({ id }) => id === pkg.id) || pkg;
+            const updatedPackage = packages.find(({ id }) => id === pkg.id) || pkg;
             this.client.notifyBoardInstalled({ pkg: updatedPackage });
         }
         console.info("Board installation done", pkg);

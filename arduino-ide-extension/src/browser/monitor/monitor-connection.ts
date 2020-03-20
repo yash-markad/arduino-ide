@@ -225,7 +225,7 @@ export class MonitorConnection {
             if (this.boardsServiceClient.canUploadTo(boardsConfig, { silent: false })) {
                 // Instead of calling `getAttachedBoards` and filtering for `AttachedSerialBoard` we have to check the available ports.
                 // The connected board might be unknown. See: https://github.com/arduino/arduino-pro-ide/issues/127#issuecomment-563251881
-                this.boardsService.getAvailablePorts().then(({ ports }) => {
+                this.boardsService.getAvailablePorts().then(ports => {
                     if (ports.some(port => Port.equals(port, boardsConfig.selectedPort))) {
                         new Promise<void>(resolve => {
                             // First, disconnect if connected.
