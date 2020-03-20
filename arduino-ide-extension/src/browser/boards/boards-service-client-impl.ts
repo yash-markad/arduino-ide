@@ -79,15 +79,6 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     }
 
     protected async tryReconnect(): Promise<boolean> {
-        const { selectedPort, selectedBoard } = this.boardsConfig;
-        // Dynamically unset the port if is not available anymore. A port can be "detached" when unplugging a board.
-        if (!this._availablePorts.some(port => Port.equals(selectedPort, port))) {
-            this.boardsConfig = {
-                selectedBoard,
-                selectedPort: undefined
-            };
-            await this.reconcileAvailableBoards();
-        }
         if (this.latestValidBoardsConfig && !this.canUploadTo(this.boardsConfig)) {
             for (const board of this.availableBoards.filter(({ state }) => state !== AvailableBoard.State.incomplete)) {
                 if (this.latestValidBoardsConfig.selectedBoard.fqbn === board.fqbn
@@ -153,12 +144,16 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     }
 
     set boardsConfig(config: BoardsConfig.Config) {
+        this.doSetBoardsConfig(config);
+        this.saveState().finally(() => this.reconcileAvailableBoards().finally(() => this.onBoardsConfigChangedEmitter.fire(this._boardsConfig)));
+    }
+
+    protected doSetBoardsConfig(config: BoardsConfig.Config): void {
         this.logger.info('Board config changed: ', JSON.stringify(config));
         this._boardsConfig = config;
         if (this.canUploadTo(this._boardsConfig)) {
             this.latestValidBoardsConfig = this._boardsConfig;
         }
-        this.saveState().finally(() => this.reconcileAvailableBoards().finally(() => this.onBoardsConfigChangedEmitter.fire(this._boardsConfig)));
     }
 
     get boardsConfig(): BoardsConfig.Config {
@@ -222,12 +217,17 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
     protected async reconcileAvailableBoards(): Promise<void> {
         const attachedBoards = this._attachedBoards;
         const availablePorts = this._availablePorts;
+        // Unset the port on the user's config, if it is not available anymore.
+        if (this.boardsConfig.selectedPort && !availablePorts.some(port => Port.sameAs(port, this.boardsConfig.selectedPort))) {
+            this.doSetBoardsConfig({ selectedBoard: this.boardsConfig.selectedBoard, selectedPort: undefined });
+            this.onBoardsConfigChangedEmitter.fire(this._boardsConfig);
+        }
         const boardsConfig = this.boardsConfig;
         const currentAvailableBoards = this._availableBoards;
         const availableBoards: AvailableBoard[] = [];
-
         const availableBoardPorts = availablePorts.filter(Port.isBoardPort);
         const attachedSerialBoards = attachedBoards.filter(({ port }) => !!port);
+
         for (const boardPort of availableBoardPorts) {
             let state = AvailableBoard.State.incomplete; // Initial pessimism.
             let board = attachedSerialBoards.find(({ port }) => Port.sameAs(boardPort, port));

@@ -103,6 +103,17 @@ describe('boards-service-client-impl', () => {
             expect(client.canVerify(client.boardsConfig)).to.be.true;
         });
 
+        it('should not reconnect last valid selected if port is gone', async () => {
+            await attach(ESP8266, UNO);
+            await configureBoards({ selectedBoard: { name: 'NodeMCU 0.9 (ESP-12 Module)', fqbn: 'esp8266:esp8266:nodemcu' }, selectedPort: ESP8266 });
+            await detach(ESP8266);
+            expect(availableBoards()).to.have.length(2);
+            const selected = availableBoards().find(({ selected }) => selected);
+            expect(selected).to.be.not.undefined;
+            expect(selected!.port).to.be.undefined;
+            expect(selected!.name).to.be.equal('NodeMCU 0.9 (ESP-12 Module)');
+        });
+
         function availableBoards(): AvailableBoard[] {
             return client.availableBoards.slice();
         }
