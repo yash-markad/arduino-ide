@@ -296,7 +296,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 
     protected getLastSelectedBoardOnPortKey(port: Port | string): string {
         // TODO: we lose the port's `protocol` info (`serial`, `network`, etc.) here if the `port` is a `string`.
-        return `last-selected-board-on-port-${typeof port === 'string' ? port : Port.toString(port)}`;
+        return `last-selected-board-on-port:${typeof port === 'string' ? port : Port.toString(port)}`;
     }
 
     protected async loadState(): Promise<void> {

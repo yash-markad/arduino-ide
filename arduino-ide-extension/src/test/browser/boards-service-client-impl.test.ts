@@ -6,6 +6,7 @@ import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { BoardsService, Board, Port, BoardsPackage, BoardDetails, BoardsServiceClient, AttachedSerialBoard } from '../../common/protocol';
 import { BoardsServiceClientImpl, AvailableBoard } from '../../browser/boards/boards-service-client-impl';
+import { BoardsConfig } from '../../browser/boards/boards-config';
 
 // tslint:disable: no-unused-expression   
 
@@ -17,6 +18,10 @@ describe('boards-service-client-impl', () => {
         const UNO: AttachedSerialBoard = { name: 'Arduino Uno', fqbn: 'arduino:avr:uno', port: '/dev/cu.usbmodem14501' };
         const MKR1000: AttachedSerialBoard = { name: 'Arduino MKR1000', fqbn: 'arduino:samd:mkr1000', port: '/dev/cu.usbmodem14601' };
         const NANO: Board = { name: 'Arduino Nano', fqbn: 'arduino:avr:nano' };
+
+        const recognized = AvailableBoard.State.recognized;
+        const guessed = AvailableBoard.State.guessed;
+        const incomplete = AvailableBoard.State.incomplete;
 
         let server: MockBoardsService;
         let client: BoardsServiceClientImpl;
@@ -37,14 +42,14 @@ describe('boards-service-client-impl', () => {
         it('should be notified when a board is attached', async () => {
             await attach(MKR1000);
             expect(availableBoards()).to.have.length(1);
-            expect(availableBoards()[0].state).to.be.equal(AvailableBoard.State.recognized);
+            expect(availableBoards()[0].state).to.be.equal(recognized);
             expect(!!availableBoards()[0].selected).to.be.false;
         });
 
         it('should be notified when a unknown board is attached', async () => {
             await attach(ESP8266);
             expect(availableBoards()).to.have.length(1);
-            expect(availableBoards()[0].state).to.be.equal(AvailableBoard.State.incomplete);
+            expect(availableBoards()[0].state).to.be.equal(incomplete);
         });
 
         it('should be notified when a board is detached', async () => {
@@ -64,58 +69,79 @@ describe('boards-service-client-impl', () => {
         it('should recognize boards config as an available board', async () => {
             await configureBoards({ selectedBoard: NANO });
             expect(availableBoards()).to.have.length(1);
-            expect(availableBoards()[0].state).to.be.equal(AvailableBoard.State.incomplete);
+            expect(availableBoards()[0].state).to.be.equal(incomplete);
             expect(availableBoards()[0].selected).to.be.true;
+        });
+
+        it('should discard the boards config port when corresponding board is detached', async () => {
+            await attach(MKR1000);
+            expect(availableBoards()).to.have.length(1);
+            expect(availableBoards()[0].state).to.be.equal(recognized);
+            expect(availableBoards()[0].selected).to.be.false;
+
+            await configureBoards({ selectedBoard: MKR1000, selectedPort: server.portFor(MKR1000) });
+            expect(availableBoards()).to.have.length(1);
+            expect(availableBoards()[0].state).to.be.equal(recognized);
+            expect(availableBoards()[0].selected).to.be.true;
+
+            await detach(MKR1000);
+            expect(availableBoards()).to.have.length(1);
+            expect(availableBoards()[0].state).to.be.equal(incomplete);
+            expect(availableBoards()[0].selected).to.be.true;
+        });
+
+        it("should consider selected unknown boards as 'guessed'", async () => {
+            await attach(ESP8266);
+            await configureBoards({ selectedBoard: { name: 'guessed' }, selectedPort: ESP8266 });
+            expect(availableBoards()).to.have.length(1);
+            expect(availableBoards()[0].state).to.be.equal(guessed);
+            expect(availableBoards()[0].name).to.be.equal('guessed');
+            expect(availableBoards()[0].fqbn).to.be.undefined;
+            expect(client.canVerify(client.boardsConfig)).to.be.true;
         });
 
         function availableBoards(): AvailableBoard[] {
             return client.availableBoards.slice();
         }
 
-        async function configureBoards({ selectedBoard, selectedPort }: { selectedBoard?: Board, selectedPort?: Port }): Promise<void> {
-            client.boardsConfig = {
-                selectedBoard,
-                selectedPort
-            };
-            await awaitAvailableBoardsChanged();
+        async function configureBoards(config: BoardsConfig.Config): Promise<void> {
+            return new Promise<void>(async resolve => {
+                const availableBoardsChanged = new Deferred<void>();
+                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
+                client.boardsConfig = config;
+                await availableBoardsChanged.promise;
+                resolve();
+            });
         }
 
         async function detach(...toDetach: Array<Board | Port>): Promise<void> {
-            server.detach(...toDetach);
-            await awaitAttachedBoardsChanged();
-            await awaitAvailableBoardsChanged();
+            return new Promise<void>(async resolve => {
+                const attachedBoardsChanged = new Deferred<void>();
+                const availableBoardsChanged = new Deferred<void>();
+                client.onAttachedBoardsChanged(() => attachedBoardsChanged.resolve());
+                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
+                server.detach(...toDetach);
+                await Promise.all([
+                    attachedBoardsChanged.promise,
+                    availableBoardsChanged.promise
+                ]);
+                resolve();
+            });
         }
 
         async function attach(...toAttach: Array<Board | Port>): Promise<void> {
-            server.attach(...toAttach);
-            await awaitAttachedBoardsChanged();
-            await awaitAvailableBoardsChanged();
-        }
-
-        async function awaitAttachedBoardsChanged(): Promise<void> {
-            const deferred = new Deferred<void>();
-            client.onAttachedBoardsChanged(() => deferred.resolve());
-            await Promise.race([
-                deferred,
-                timeout("Haven't received an 'onAttachedBoardsChanged' event.")
-            ]);
-        }
-
-        async function awaitAvailableBoardsChanged(): Promise<void> {
-            const deferred = new Deferred<void>();
-            client.onAvailableBoardsChanged(() => deferred.resolve());
-            await Promise.race([
-                deferred,
-                timeout("Haven't received an 'onAvailableBoardsChanged' event.")
-            ]);
-        }
-
-        function timeout(message: string, timeout: number = 2000): Promise<void> {
-            if (process.argv.indexOf('--no-timeouts') === -1) {
-                return new Promise<void>((_, reject) => setTimeout(() => reject(new Error(message)), timeout));
-            }
-            // no timeout in debug mode.
-            return new Deferred<void>().promise;
+            return new Promise<void>(async resolve => {
+                const attachedBoardsChanged = new Deferred<void>();
+                const availableBoardsChanged = new Deferred<void>();
+                client.onAttachedBoardsChanged(() => attachedBoardsChanged.resolve());
+                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
+                server.attach(...toAttach);
+                await Promise.all([
+                    attachedBoardsChanged.promise,
+                    availableBoardsChanged.promise
+                ]);
+                resolve();
+            });
         }
 
     });
