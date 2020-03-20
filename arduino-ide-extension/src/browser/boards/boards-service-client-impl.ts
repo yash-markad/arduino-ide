@@ -158,10 +158,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         if (this.canUploadTo(this._boardsConfig)) {
             this.latestValidBoardsConfig = this._boardsConfig;
         }
-        this.saveState().finally(() => {
-            this.onBoardsConfigChangedEmitter.fire(this._boardsConfig);
-            this.reconcileAvailableBoards();
-        });
+        this.saveState().finally(() => this.reconcileAvailableBoards().finally(() => this.onBoardsConfigChangedEmitter.fire(this._boardsConfig)));
     }
 
     get boardsConfig(): BoardsConfig.Config {
