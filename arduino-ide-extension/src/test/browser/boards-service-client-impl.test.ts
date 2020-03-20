@@ -6,6 +6,7 @@ import { Deferred } from '@theia/core/lib/common/promise-util';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { MaybePromise } from '@theia/core/lib/common/types';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
+import { DisposableCollection } from '@theia/core/lib/common/disposable';
 import { BoardsService, Board, Port, BoardsPackage, BoardDetails, BoardsServiceClient, AttachedSerialBoard } from '../../common/protocol';
 import { BoardsServiceClientImpl, AvailableBoard } from '../../browser/boards/boards-service-client-impl';
 import { BoardsConfig } from '../../browser/boards/boards-config';
@@ -120,14 +121,15 @@ describe('boards-service-client-impl', () => {
 
         async function awaitAll(exec: () => MaybePromise<void>, ...waitFor: Event<any>[]): Promise<void> {
             return new Promise<void>(async resolve => {
-                const promises: Promise<void>[] = [];
-                for (const event of waitFor) {
+                const toDispose = new DisposableCollection();
+                const promises = waitFor.map(event => {
                     const deferred = new Deferred<void>();
-                    event(() => deferred.resolve());
-                    promises.push(deferred.promise);
-                }
+                    toDispose.push(event(() => deferred.resolve()));
+                    return deferred.promise;
+                });
                 await exec();
                 await Promise.all(promises);
+                toDispose.dispose();
                 resolve();
             });
         }
@@ -144,7 +146,6 @@ function init(): Container {
     container.bind(MockStorageService).toSelf();
     container.bind(StorageService).toService(MockStorageService);
     container.bind(BoardsServiceClientImpl).toSelf();
-
     return container;
 }
 
