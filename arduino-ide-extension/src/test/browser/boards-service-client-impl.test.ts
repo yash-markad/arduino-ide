@@ -1,8 +1,10 @@
 import { expect } from 'chai';
 import { Container, injectable } from 'inversify';
+import { Event } from '@theia/core/lib/common/event';
 import { ILogger } from '@theia/core/lib/common/logger';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
+import { MaybePromise } from '@theia/core/lib/common/types';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { BoardsService, Board, Port, BoardsPackage, BoardDetails, BoardsServiceClient, AttachedSerialBoard } from '../../common/protocol';
 import { BoardsServiceClientImpl, AvailableBoard } from '../../browser/boards/boards-service-client-impl';
@@ -105,41 +107,27 @@ describe('boards-service-client-impl', () => {
         }
 
         async function configureBoards(config: BoardsConfig.Config): Promise<void> {
-            return new Promise<void>(async resolve => {
-                const availableBoardsChanged = new Deferred<void>();
-                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
-                client.boardsConfig = config;
-                await availableBoardsChanged.promise;
-                resolve();
-            });
+            return awaitAll(() => { client.boardsConfig = config; }, client.onAvailableBoardsChanged);
         }
 
         async function detach(...toDetach: Array<Board | Port>): Promise<void> {
-            return new Promise<void>(async resolve => {
-                const attachedBoardsChanged = new Deferred<void>();
-                const availableBoardsChanged = new Deferred<void>();
-                client.onAttachedBoardsChanged(() => attachedBoardsChanged.resolve());
-                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
-                server.detach(...toDetach);
-                await Promise.all([
-                    attachedBoardsChanged.promise,
-                    availableBoardsChanged.promise
-                ]);
-                resolve();
-            });
+            return awaitAll(() => server.detach(...toDetach), client.onAttachedBoardsChanged, client.onAvailableBoardsChanged);
         }
 
         async function attach(...toAttach: Array<Board | Port>): Promise<void> {
+            return awaitAll(() => server.attach(...toAttach), client.onAttachedBoardsChanged, client.onAvailableBoardsChanged);
+        }
+
+        async function awaitAll(exec: () => MaybePromise<void>, ...waitFor: Event<any>[]): Promise<void> {
             return new Promise<void>(async resolve => {
-                const attachedBoardsChanged = new Deferred<void>();
-                const availableBoardsChanged = new Deferred<void>();
-                client.onAttachedBoardsChanged(() => attachedBoardsChanged.resolve());
-                client.onAvailableBoardsChanged(() => availableBoardsChanged.resolve());
-                server.attach(...toAttach);
-                await Promise.all([
-                    attachedBoardsChanged.promise,
-                    availableBoardsChanged.promise
-                ]);
+                const promises: Promise<void>[] = [];
+                for (const event of waitFor) {
+                    const deferred = new Deferred<void>();
+                    event(() => deferred.resolve());
+                    promises.push(deferred.promise);
+                }
+                await exec();
+                await Promise.all(promises);
                 resolve();
             });
         }
