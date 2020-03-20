@@ -7,7 +7,7 @@ import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { MaybePromise } from '@theia/core/lib/common/types';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { DisposableCollection } from '@theia/core/lib/common/disposable';
-import { BoardsService, Board, Port, BoardsPackage, BoardDetails, BoardsServiceClient, AttachedSerialBoard } from '../../common/protocol';
+import { BoardsService, Board, Port, BoardsPackage, BoardDetails, BoardsServiceClient } from '../../common/protocol';
 import { BoardsServiceClientImpl, AvailableBoard } from '../../browser/boards/boards-service-client-impl';
 import { BoardsConfig } from '../../browser/boards/boards-config';
 
@@ -18,8 +18,8 @@ describe('boards-service-client-impl', () => {
     describe('onAvailableBoardsChanged', () => {
 
         const ESP8266: Port = { protocol: 'serial', address: '/dev/cu.SLAB_USBtoUART' };
-        const UNO: AttachedSerialBoard = { name: 'Arduino Uno', fqbn: 'arduino:avr:uno', port: '/dev/cu.usbmodem14501' };
-        const MKR1000: AttachedSerialBoard = { name: 'Arduino MKR1000', fqbn: 'arduino:samd:mkr1000', port: '/dev/cu.usbmodem14601' };
+        const UNO: Board = { name: 'Arduino Uno', fqbn: 'arduino:avr:uno', port: { protocol: 'serial', address: '/dev/cu.usbmodem14501' } };
+        const MKR1000: Board = { name: 'Arduino MKR1000', fqbn: 'arduino:samd:mkr1000', port: { protocol: 'serial', address: '/dev/cu.usbmodem14601' } };
         const NANO: Board = { name: 'Arduino Nano', fqbn: 'arduino:avr:nano' };
 
         const recognized = AvailableBoard.State.recognized;
@@ -161,8 +161,8 @@ export class MockBoardsService implements BoardsService {
         const oldState = { boards: this.boards.slice(), ports: this.ports.slice() };
         for (const what of toAttach) {
             if (Board.is(what)) {
-                if (AttachedSerialBoard.is(what)) {
-                    this.ports.push({ protocol: 'serial', address: what.port });
+                if (what.port) {
+                    this.ports.push(what.port);
                 }
                 this.boards.push(what);
             } else {
@@ -184,8 +184,8 @@ export class MockBoardsService implements BoardsService {
                     throw new Error(`${what} board is not attached. Boards were: ${JSON.stringify(oldState.boards)}`);
                 }
                 this.boards.splice(index, 1);
-                if (AttachedSerialBoard.is(what)) {
-                    const portIndex = this.ports.findIndex(({ protocol, address }) => protocol === 'serial' && address === what.port);
+                if (what.port) {
+                    const portIndex = this.ports.findIndex(port => Port.sameAs(what.port, port));
                     if (portIndex === -1) {
                         throw new Error(`${what} port is not available. Ports were: ${JSON.stringify(oldState.ports)}`);
                     }
@@ -217,8 +217,11 @@ export class MockBoardsService implements BoardsService {
         }
     }
 
-    portFor(board: AttachedSerialBoard): Port {
-        const port = this.ports.find(({ protocol, address }) => protocol === 'serial' && address === board.port);
+    portFor(board: Board): Port {
+        if (!board.port) {
+            throw new Error(`${JSON.stringify(board)} does not have a port.`);
+        }
+        const port = this.ports.find(port => Port.sameAs(port, board.port));
         if (!port) {
             throw new Error(`Could not find port for board: ${JSON.stringify(board)}. Ports were: ${JSON.stringify(this.ports)}.`);
         }

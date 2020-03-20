@@ -5,7 +5,7 @@ import { MessageService } from '@theia/core/lib/common/message-service';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser/frontend-application';
 import { RecursiveRequired } from '../../common/types';
-import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, AttachedSerialBoard, Board, Port, BoardUninstalledEvent } from '../../common/protocol';
+import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, Board, Port, BoardUninstalledEvent } from '../../common/protocol';
 import { BoardsConfig } from './boards-config';
 
 @injectable()
@@ -227,7 +227,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
         const availableBoards: AvailableBoard[] = [];
 
         const availableBoardPorts = availablePorts.filter(Port.isBoardPort);
-        const attachedSerialBoards = attachedBoards.filter(AttachedSerialBoard.is);
+        const attachedSerialBoards = attachedBoards.filter(({ port }) => !!port);
         for (const boardPort of availableBoardPorts) {
             let state = AvailableBoard.State.incomplete; // Initial pessimism.
             let board = attachedSerialBoards.find(({ port }) => Port.sameAs(boardPort, port));
@@ -240,7 +240,7 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
                 if (lastSelectedBoard) {
                     board = {
                         ...lastSelectedBoard,
-                        port: Port.toString(boardPort)
+                        port: boardPort
                     };
                     state = AvailableBoard.State.guessed;
                 }

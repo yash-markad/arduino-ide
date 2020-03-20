@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { DisposableCollection } from '@theia/core';
-import { BoardsService, Board, Port, AttachedSerialBoard, AttachedBoardsChangeEvent } from '../../common/protocol/boards-service';
+import { BoardsService, Board, Port, AttachedBoardsChangeEvent } from '../../common/protocol/boards-service';
 import { BoardsServiceClientImpl } from './boards-service-client-impl';
 import { CoreServiceClientImpl } from '../core-service-client-impl';
 import { ArduinoDaemonClientImpl } from '../arduino-daemon-client-impl';
@@ -239,9 +239,9 @@ export namespace BoardsConfig {
 
     export namespace Config {
 
-        export function sameAs(config: Config, other: Config | AttachedSerialBoard): boolean {
+        export function sameAs(config: Config, other: Config | Board): boolean {
             const { selectedBoard, selectedPort } = config;
-            if (AttachedSerialBoard.is(other)) {
+            if (Board.is(other)) {
                 return !!selectedBoard
                     && Board.equals(other, selectedBoard)
                     && Port.sameAs(selectedPort, other.port);

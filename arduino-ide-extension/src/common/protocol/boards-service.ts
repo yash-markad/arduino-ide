@@ -190,8 +190,9 @@ export interface BoardsPackage extends ArduinoComponent {
 }
 
 export interface Board {
-    readonly name: string
-    readonly fqbn?: string
+    readonly name: string;
+    readonly fqbn?: string;
+    readonly port?: Port;
 }
 
 export interface BoardDetails {
@@ -345,26 +346,4 @@ export namespace Board {
     }
 
 
-}
-
-// TODO: remove! Introduce `port?: Port` on `Board` instead.
-export interface AttachedSerialBoard extends Board {
-    port: string;
-}
-
-export namespace AttachedSerialBoard {
-    export function is(b: Board | any): b is AttachedSerialBoard {
-        return !!b && 'port' in b;
-    }
-}
-
-export interface AttachedNetworkBoard extends Board {
-    address: string;
-    port: string;
-}
-
-export namespace AttachedNetworkBoard {
-    export function is(b: Board): b is AttachedNetworkBoard {
-        return 'address' in b && 'port' in b;
-    }
 }

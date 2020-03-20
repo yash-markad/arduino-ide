@@ -1,10 +1,7 @@
 import { injectable, inject, postConstruct, named } from 'inversify';
 import { ILogger } from '@theia/core/lib/common/logger';
 import { Deferred } from '@theia/core/lib/common/promise-util';
-import {
-    BoardsService, AttachedSerialBoard, BoardsPackage, Board, AttachedNetworkBoard, BoardsServiceClient,
-    Port, BoardDetails, Tool, ConfigOption, ConfigValue
-} from '../common/protocol/boards-service';
+import { BoardsService, BoardsPackage, Board, BoardsServiceClient, Port, BoardDetails, Tool, ConfigOption, ConfigValue } from '../common/protocol';
 import {
     PlatformSearchReq, PlatformSearchResp, PlatformInstallReq, PlatformInstallResp, PlatformListReq,
     PlatformListResp, Platform, PlatformUninstallResp, PlatformUninstallReq
@@ -192,23 +189,8 @@ export class BoardsServiceImpl implements BoardsService {
             for (const board of portList.getBoardsList()) {
                 const name = board.getName() || 'unknown';
                 const fqbn = board.getFqbn();
-                const port = address;
-                if (protocol === 'serial') {
-                    boards.push(<AttachedSerialBoard>{
-                        name,
-                        fqbn,
-                        port
-                    });
-                } else if (protocol === 'network') { // We assume, it is a `network` board.
-                    boards.push(<AttachedNetworkBoard>{
-                        name,
-                        fqbn,
-                        address,
-                        port
-                    });
-                } else {
-                    console.warn(`Unknown protocol for port: ${address}.`);
-                }
+                const port = { address, protocol };
+                boards.push({ name, fqbn, port });
             }
         }
         // TODO: remove mock board!
