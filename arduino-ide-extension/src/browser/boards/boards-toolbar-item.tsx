@@ -3,8 +3,8 @@ import * as ReactDOM from 'react-dom';
 import { CommandRegistry } from '@theia/core/lib/common/command';
 import { DisposableCollection } from '@theia/core/lib/common/disposable';
 import { Port } from '../../common/protocol';
-import { ArduinoCommands } from '../arduino-commands';
 import { BoardsConfig } from './boards-config';
+import { ArduinoCommands } from '../arduino-commands';
 import { BoardsServiceClientImpl, AvailableBoard } from './boards-service-client-impl';
 
 export interface BoardsDropDownListCoords {
@@ -17,7 +17,7 @@ export interface BoardsDropDownListCoords {
 export namespace BoardsDropDown {
     export interface Props {
         readonly coords: BoardsDropDownListCoords | 'hidden';
-        readonly items: Array<AvailableBoard & { onClick: () => void }>;
+        readonly items: Array<AvailableBoard & { onClick: () => void, port: Port }>;
         readonly openBoardsConfig: () => void;
     }
 }
@@ -56,7 +56,7 @@ export class BoardsDropDown extends React.Component<BoardsDropDown.Props> {
                 label: 'Select Other Board & Port',
                 onClick: () => this.props.openBoardsConfig()
             })}
-            {items.map(({ name, port, selected, onClick }) => ({ label: `${name}${!!port ? ` at ${Port.toString(port)}` : ''}`, selected, onClick })).map(this.renderItem)}
+            {items.map(({ name, port, selected, onClick }) => ({ label: `${name} at ${Port.toString(port)}`, selected, onClick })).map(this.renderItem)}
         </div>
     }
 
@@ -126,7 +126,7 @@ export class BoardsToolBarItem extends React.Component<BoardsToolBarItem.Props, 
         const title = BoardsConfig.Config.toString(boardsConfig, { default: 'no board selected' });
         const decorator = (() => {
             const selectedBoard = availableBoards.find(({ selected }) => selected);
-            if (!selectedBoard) {
+            if (!selectedBoard || !selectedBoard.port) {
                 return 'fa fa-times notAttached'
             }
             if (selectedBoard.state === AvailableBoard.State.guessed) {
@@ -151,7 +151,7 @@ export class BoardsToolBarItem extends React.Component<BoardsToolBarItem.Props, 
             </div>
             <BoardsDropDown
                 coords={coords}
-                items={availableBoards.map(board => ({
+                items={availableBoards.filter(AvailableBoard.isWithPort).map(board => ({
                     ...board,
                     onClick: () => {
                         if (board.state === AvailableBoard.State.incomplete) {

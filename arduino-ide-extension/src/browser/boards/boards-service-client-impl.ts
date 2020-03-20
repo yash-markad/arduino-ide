@@ -339,6 +339,10 @@ export namespace AvailableBoard {
         'incomplete'
     }
 
+    export function isWithPort(board: AvailableBoard): board is AvailableBoard & { port: Port } {
+        return !!board.port;
+    }
+
     export const COMPARATOR = (left: AvailableBoard, right: AvailableBoard) => {
         let result = left.name.localeCompare(right.name);
         if (result !== 0) {
@@ -364,4 +368,5 @@ export namespace AvailableBoard {
         }
         return left.state - right.state;
     }
+
 }
