@@ -7,6 +7,7 @@ import { FrontendApplicationContribution } from '@theia/core/lib/browser/fronten
 import { RecursiveRequired } from '../../common/types';
 import { BoardsServiceClient, AttachedBoardsChangeEvent, BoardInstalledEvent, Board, Port, BoardUninstalledEvent } from '../../common/protocol';
 import { BoardsConfig } from './boards-config';
+import { naturalCompare } from '../../common/utils';
 
 @injectable()
 export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApplicationContribution {
@@ -262,10 +263,10 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
             });
         }
 
-        const sortedAvailableBoards = availableBoards.sort(AvailableBoard.COMPARATOR);
+        const sortedAvailableBoards = availableBoards.sort(AvailableBoard.compare);
         let hasChanged = sortedAvailableBoards.length !== currentAvailableBoards.length;
         for (let i = 0; !hasChanged && i < sortedAvailableBoards.length; i++) {
-            hasChanged = AvailableBoard.COMPARATOR(sortedAvailableBoards[i], currentAvailableBoards[i]) !== 0;
+            hasChanged = AvailableBoard.compare(sortedAvailableBoards[i], currentAvailableBoards[i]) !== 0;
         }
         if (hasChanged) {
             this._availableBoards = sortedAvailableBoards;
@@ -348,19 +349,19 @@ export namespace AvailableBoard {
         return !!board.port;
     }
 
-    export const COMPARATOR = (left: AvailableBoard, right: AvailableBoard) => {
+    export const compare = (left: AvailableBoard, right: AvailableBoard) => {
         if (left.selected && !right.selected) {
             return -1;
         }
         if (right.selected && !left.selected) {
             return 1;
         }
-        let result = left.name.localeCompare(right.name);
+        let result = naturalCompare(left.name, right.name);
         if (result !== 0) {
             return result;
         }
         if (left.fqbn && right.fqbn) {
-            result = left.name.localeCompare(right.name);
+            result = naturalCompare(left.fqbn, right.fqbn);
             if (result !== 0) {
                 return result;
             }

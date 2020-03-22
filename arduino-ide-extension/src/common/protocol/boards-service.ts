@@ -109,7 +109,7 @@ export namespace Port {
         if (!isBoardPort(left) && isBoardPort(right)) {
             return 1;
         }
-        let result = left.protocol.toLocaleLowerCase().localeCompare(right.protocol.toLocaleLowerCase());
+        let result = naturalCompare(left.protocol.toLocaleLowerCase(), right.protocol.toLocaleLowerCase());
         if (result !== 0) {
             return result;
         }
@@ -117,7 +117,7 @@ export namespace Port {
         if (result !== 0) {
             return result;
         }
-        return (left.label || '').localeCompare(right.label || '');
+        return naturalCompare(left.label || '', right.label || '');
     }
 
     export function equals(left: Port | undefined, right: Port | undefined): boolean {
@@ -271,7 +271,7 @@ export namespace ConfigOption {
         }
     }
 
-    export const LABEL_COMPARATOR = (left: ConfigOption, right: ConfigOption) => left.label.toLocaleLowerCase().localeCompare(right.label.toLocaleLowerCase());
+    export const LABEL_COMPARATOR = (left: ConfigOption, right: ConfigOption) => naturalCompare(left.label.toLocaleLowerCase(), right.label.toLocaleLowerCase());
 
 }
 
@@ -303,9 +303,9 @@ export namespace Board {
     }
 
     export function compare(left: Board, right: Board): number {
-        let result = left.name.localeCompare(right.name);
+        let result = naturalCompare(left.name, right.name);
         if (result === 0) {
-            result = (left.fqbn || '').localeCompare(right.fqbn || '');
+            result = naturalCompare(left.fqbn || '', right.fqbn || '');
         }
         return result;
     }

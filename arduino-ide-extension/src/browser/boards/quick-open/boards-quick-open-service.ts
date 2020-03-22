@@ -5,13 +5,13 @@ import { CommandContribution, CommandRegistry, Command } from '@theia/core/lib/c
 import { KeybindingContribution, KeybindingRegistry } from '@theia/core/lib/browser/keybinding';
 import { QuickOpenItem, QuickOpenModel, QuickOpenMode, QuickOpenGroupItem } from '@theia/core/lib/common/quick-open-model';
 import {
-    QuickOpenOptions,
-    QuickOpenContribution,
-    QuickOpenHandler,
-    QuickOpenHandlerRegistry,
-    QuickOpenItemOptions,
-    QuickOpenActionProvider,
     QuickOpenService,
+    QuickOpenHandler,
+    QuickOpenOptions,
+    QuickOpenItemOptions,
+    QuickOpenContribution,
+    QuickOpenActionProvider,
+    QuickOpenHandlerRegistry,
     QuickOpenGroupItemOptions
 } from '@theia/core/lib/browser/quick-open';
 import { naturalCompare } from '../../../common/utils';
@@ -93,9 +93,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         }
         return {
             placeholder,
-            fuzzyMatchLabel: {
-                enableSeparateSubstringMatching: true
-            },
+            fuzzyMatchLabel: true,
             onClose: () => this.isOpen = false
         };
     }
@@ -115,7 +113,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         const toAccept: QuickOpenItem<QuickOpenItemOptions>[] = [];
 
         // Show the selected attached in a different group.
-        if (this.selectedBoard) {
+        if (this.selectedBoard && fuzzyFilter(this.selectedBoard.name)) {
             toAccept.push(this.toQuickItem(this.selectedBoard, { groupLabel: 'Selected Board' }));
         }
 
@@ -123,6 +121,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         toAccept.push(...availableBoards.filter(board => board !== this.selectedBoard).map((board, i) => {
             let group: QuickOpenGroupItemOptions | undefined = undefined;
             if (i === 0) {
+                // If no `selectedBoard`, then this item is the top one, no borders required.
                 group = { groupLabel: 'Attached Boards', showBorder: !!this.selectedBoard };
             }
             return this.toQuickItem(board, group);
@@ -152,7 +151,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
 
     private fuzzyFilter(lookFor: string): (inputString: string) => boolean {
         const shouldFilter = !!lookFor.trim().length;
-        return (inputString: string) => shouldFilter ? fuzzy.test(lookFor, inputString) : true;
+        return (inputString: string) => shouldFilter ? fuzzy.test(lookFor.toLocaleLowerCase(), inputString.toLocaleLowerCase()) : true;
     }
 
     protected async update(availableBoards: AvailableBoard[]): Promise<void> {
@@ -177,15 +176,32 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
     protected toQuickItem(item: BoardsQuickOpenService.Item, group?: QuickOpenGroupItemOptions): QuickOpenItem<QuickOpenItemOptions> {
         let options: QuickOpenItemOptions;
         if (AvailableBoard.is(item)) {
+            const description = `on ${Port.toString(item.port)}`
             options = {
                 label: `${item.name}`,
-                description: `on ${Port.toString(item.port)}`,
+                description,
+                descriptionHighlights: [
+                    {
+                        start: 0,
+                        end: description.length
+                    }
+                ],
                 run: this.toRun(() => this.boardsServiceClient.boardsConfig = ({ selectedBoard: item, selectedPort: item.port }))
             };
         } else if (ConfigOption.is(item)) {
             const selected = item.values.find(({ selected }) => selected);
+            const value = selected ? selected.label : 'Not set';
+            const label = `${item.label}: ${value}`;
             options = {
-                label: `${item.label}${selected ? `: ${selected.label}` : ''}`,
+                label,
+                // Intended to match the value part of a board setting.
+                // NOTE: this does not work, as `fuzzyMatchLabel: true` is set. Manual highlighting is ignored, apparently.
+                labelHighlights: [
+                    {
+                        start: label.length - value.length,
+                        end: label.length
+                    }
+                ],
                 run: (mode) => {
                     if (mode === QuickOpenMode.OPEN) {
                         this.setConfig(item);
@@ -200,8 +216,14 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         } else {
             options = {
                 label: `${item.name}`,
-                description: `${item.packageName}${item.missing}`,
-                run: this.toRun(() => console.log(`Select '${item.name}' show the port!.`))
+                description: `${item.missing ? '' : `[installed with '${item.packageName}']`}`,
+                run: (mode) => {
+                    if (mode === QuickOpenMode.OPEN) {
+                        this.selectBoard(item);
+                        return false;
+                    }
+                    return true;
+                }
             };
         }
         if (group) {
@@ -221,8 +243,31 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         };
     }
 
+    protected async selectBoard(board: Board): Promise<void> {
+        const allPorts = this.availableBoards.filter(AvailableBoard.hasPort).map(({ port }) => port).sort(Port.compare);
+        const toItem = (port: Port) => new QuickOpenItem<QuickOpenItemOptions>({
+            label: Port.toString(port, { useLabel: true }),
+            run: this.toRun(() => {
+                this.boardsServiceClient.boardsConfig = {
+                    selectedBoard: board,
+                    selectedPort: port
+                };
+            })
+        });
+        const options = {
+            placeholder: `Select a port for '${board.name}'. Press 'Enter' to confirm or 'Escape' to cancel.`,
+            fuzzyMatchLabel: true
+        }
+        this.quickOpenService.open({
+            onType: (lookFor, acceptor) => {
+                const fuzzyFilter = this.fuzzyFilter(lookFor);
+                acceptor(allPorts.filter(({ address }) => fuzzyFilter(address)).map(toItem));
+            }
+        }, options);
+    }
+
     protected async setConfig(config: ConfigOption): Promise<void> {
-        const toItems = (value: ConfigValue) => new QuickOpenItem<QuickOpenItemOptions>({
+        const toItem = (value: ConfigValue) => new QuickOpenItem<QuickOpenItemOptions>({
             label: value.label,
             iconClass: value.selected ? 'fa fa-check' : '',
             run: this.toRun(() => {
@@ -252,7 +297,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
                 acceptor(config.values
                     .filter(({ label }) => fuzzyFilter(label))
                     .sort((left, right) => naturalCompare(left.label, right.label))
-                    .map(toItems));
+                    .map(toItem));
             }
         }, options);
     }
