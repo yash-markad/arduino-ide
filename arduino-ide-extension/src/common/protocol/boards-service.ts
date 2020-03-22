@@ -214,6 +214,11 @@ export interface ConfigOption {
 }
 export namespace ConfigOption {
 
+    export function is(arg: any): arg is ConfigOption {
+        return !!arg && 'option' in arg && 'label' in arg && 'values' in arg
+            && typeof arg['option'] === 'string' && typeof arg['label'] === 'string' && Array.isArray(arg['values'])
+    }
+
     /**
      * Appends the configuration options to the `fqbn` argument.
      * Throws an error if the `fqbn` does not have the `segment(':'segment)*` format.

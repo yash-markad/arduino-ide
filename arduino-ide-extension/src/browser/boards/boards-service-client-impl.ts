@@ -349,6 +349,12 @@ export namespace AvailableBoard {
     }
 
     export const COMPARATOR = (left: AvailableBoard, right: AvailableBoard) => {
+        if (left.selected && !right.selected) {
+            return -1;
+        }
+        if (right.selected && !left.selected) {
+            return 1;
+        }
         let result = left.name.localeCompare(right.name);
         if (result !== 0) {
             return result;
