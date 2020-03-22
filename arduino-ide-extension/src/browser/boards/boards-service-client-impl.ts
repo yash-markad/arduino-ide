@@ -312,9 +312,10 @@ export class BoardsServiceClientImpl implements BoardsServiceClient, FrontendApp
 }
 
 /**
- * Representation of a ready-to-use board, configured by the user. Not all of the available boards are
- * necessarily recognized by the CLI (e.g.: it is a 3rd party board) or correctly configured but ready for `verify`.
- * If it has the selected board and a associated port, it can be used for `upload`.
+ * Representation of a ready-to-use board, either the user has configured it or was automatically recognized by the CLI.
+ * An available board was not necessarily recognized by the CLI (e.g.: it is a 3rd party board) or correctly configured but ready for `verify`.
+ * If it has the selected board and a associated port, it can be used for `upload`. We render an available board for the user
+ * when it has the `port` set.
  */
 export interface AvailableBoard extends Board {
     readonly state: AvailableBoard.State;
@@ -339,7 +340,11 @@ export namespace AvailableBoard {
         'incomplete'
     }
 
-    export function isWithPort(board: AvailableBoard): board is AvailableBoard & { port: Port } {
+    export function is(board: any): board is AvailableBoard {
+        return Board.is(board) && 'state' in board;
+    }
+
+    export function hasPort(board: AvailableBoard): board is AvailableBoard & { port: Port } {
         return !!board.port;
     }
 

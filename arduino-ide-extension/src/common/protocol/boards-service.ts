@@ -314,13 +314,14 @@ export namespace Board {
         return `${board.name}${fqbn}`;
     }
 
+    export type Detailed = Board & Readonly<{ selected: boolean, missing: boolean, packageName: string, details?: string }>;
     export function decorateBoards(
         selectedBoard: Board | undefined,
-        searchResults: Array<Board & { packageName: string }>): Array<Board & { selected: boolean, missing: boolean, packageName: string, details?: string }> {
+        boards: Array<Board & { packageName: string }>): Array<Detailed> {
         // Board names are not unique. We show the corresponding core name as a detail.
         // https://github.com/arduino/arduino-cli/pull/294#issuecomment-513764948
         const distinctBoardNames = new Map<string, number>();
-        for (const { name } of searchResults) {
+        for (const { name } of boards) {
             const counter = distinctBoardNames.get(name) || 0;
             distinctBoardNames.set(name, counter + 1);
         }
@@ -337,7 +338,7 @@ export namespace Board {
             }
             return false;
         }
-        return searchResults.map(board => ({
+        return boards.map(board => ({
             ...board,
             details: (distinctBoardNames.get(board.name) || 0) > 1 ? ` - ${board.packageName}` : undefined,
             selected: selected(board),
