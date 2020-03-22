@@ -1,5 +1,6 @@
 import * as fuzzy from 'fuzzy';
-import { inject, injectable, postConstruct } from 'inversify';
+import { inject, injectable, postConstruct, named } from 'inversify';
+import { ILogger } from '@theia/core/lib/common/logger';
 import { CommandContribution, CommandRegistry, Command } from '@theia/core/lib/common/command';
 import { KeybindingContribution, KeybindingRegistry } from '@theia/core/lib/browser/keybinding';
 import { QuickOpenItem, QuickOpenModel, QuickOpenMode, QuickOpenGroupItem } from '@theia/core/lib/common/quick-open-model';
@@ -13,11 +14,11 @@ import {
     QuickOpenService,
     QuickOpenGroupItemOptions
 } from '@theia/core/lib/browser/quick-open';
-import { BoardsService, Port, Board, ConfigOption } from '../../../common/protocol';
+import { naturalCompare } from '../../../common/utils';
+import { BoardsService, Port, Board, ConfigOption, ConfigValue } from '../../../common/protocol';
 import { CoreServiceClientImpl } from '../../core-service-client-impl';
 import { BoardsConfigStore } from '../boards-config-store';
 import { BoardsServiceClientImpl, AvailableBoard } from '../boards-service-client-impl';
-import { BoardsConfig } from '../boards-config';
 
 @injectable()
 export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenModel, QuickOpenHandler, CommandContribution, KeybindingContribution, Command {
@@ -26,6 +27,10 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
     readonly prefix = '|';
     readonly description = 'Configure Available Boards';
     readonly label: 'Configure Available Boards';
+
+    @inject(ILogger)
+    @named('boards-quick-open')
+    protected readonly logger: ILogger;
 
     @inject(QuickOpenService)
     protected readonly quickOpenService: QuickOpenService;
@@ -76,28 +81,21 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
     }
 
     getOptions(): QuickOpenOptions {
-        const segments: string[] = [];
-        const selectedBoard = BoardsConfig.Config.toString(this.boardsServiceClient.boardsConfig);
-        if (selectedBoard) {
-            segments.push(`${selectedBoard}`);
-        } else {
-            segments.push('No board selected')
+        let placeholder = '';
+        if (!this.selectedBoard) {
+            placeholder += 'No board selected.';
         }
+        placeholder += 'Type to filter boards';
         if (this.boardConfigs.length) {
-            segments.push('Type to filter boards or use the ↓↑ keys to adjust the board settings...');
+            placeholder += ' or use the ↓↑ keys to adjust the board settings...';
         } else {
-            segments.push('Type to filter boards...');
+            placeholder += '...';
         }
-        const placeholder = segments.join(' ');
         return {
             placeholder,
             fuzzyMatchLabel: {
                 enableSeparateSubstringMatching: true
             },
-            fuzzyMatchDescription: {
-                enableSeparateSubstringMatching: true
-            },
-            showItemsWithoutHighlight: true,
             onClose: () => this.isOpen = false
         };
     }
@@ -108,13 +106,12 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
     }
 
     onType(
-        query: string,
+        lookFor: string,
         acceptor: (items: QuickOpenItem<QuickOpenItemOptions>[], actionProvider?: QuickOpenActionProvider) => void): void {
 
-        this.currentQuery = query;
-        const shouldFilter = query.trim().length;
-        const fuzzyFilter = ({ name }: { name: string }) => shouldFilter ? fuzzy.test(query, name) : true;
-        const availableBoards = this.availableBoards.filter(AvailableBoard.hasPort).filter(fuzzyFilter);
+        this.currentQuery = lookFor;
+        const fuzzyFilter = this.fuzzyFilter(lookFor);
+        const availableBoards = this.availableBoards.filter(AvailableBoard.hasPort).filter(({ name }) => fuzzyFilter(name));
         const toAccept: QuickOpenItem<QuickOpenItemOptions>[] = [];
 
         // Show the selected attached in a different group.
@@ -132,7 +129,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         }));
 
         // Show the config only if the `input` is empty.
-        if (!query.trim().length) {
+        if (!lookFor.trim().length) {
             toAccept.push(...this.boardConfigs.map((config, i) => {
                 let group: QuickOpenGroupItemOptions | undefined = undefined;
                 if (i === 0) {
@@ -141,7 +138,7 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
                 return this.toQuickItem(config, group);
             }));
         } else {
-            toAccept.push(...this.allBoards.filter(fuzzyFilter).map((board, i) => {
+            toAccept.push(...this.allBoards.filter(({ name }) => fuzzyFilter(name)).map((board, i) => {
                 let group: QuickOpenGroupItemOptions | undefined = undefined;
                 if (i === 0) {
                     group = { groupLabel: 'Boards', showBorder: true };
@@ -151,6 +148,11 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         }
 
         acceptor(toAccept);
+    }
+
+    private fuzzyFilter(lookFor: string): (inputString: string) => boolean {
+        const shouldFilter = !!lookFor.trim().length;
+        return (inputString: string) => shouldFilter ? fuzzy.test(lookFor, inputString) : true;
     }
 
     protected async update(availableBoards: AvailableBoard[]): Promise<void> {
@@ -178,13 +180,19 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
             options = {
                 label: `${item.name}`,
                 description: `on ${Port.toString(item.port)}`,
-                run: this.toRun(item)
+                run: this.toRun(() => this.boardsServiceClient.boardsConfig = ({ selectedBoard: item, selectedPort: item.port }))
             };
         } else if (ConfigOption.is(item)) {
             const selected = item.values.find(({ selected }) => selected);
             options = {
                 label: `${item.label}${selected ? `: ${selected.label}` : ''}`,
-                run: this.toRun(item)
+                run: (mode) => {
+                    if (mode === QuickOpenMode.OPEN) {
+                        this.setConfig(item);
+                        return false;
+                    }
+                    return true;
+                }
             };
             if (!selected) {
                 options.description = 'Not set';
@@ -192,8 +200,8 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         } else {
             options = {
                 label: `${item.name}`,
-                description: item.details,
-                run: this.toRun(item)
+                description: `${item.packageName}${item.missing}`,
+                run: this.toRun(() => console.log(`Select '${item.name}' show the port!.`))
             };
         }
         if (group) {
@@ -203,25 +211,50 @@ export class BoardsQuickOpenService implements QuickOpenContribution, QuickOpenM
         }
     }
 
-    protected toRun(item: BoardsQuickOpenService.Item): ((mode: QuickOpenMode) => boolean) | undefined {
-        let run: (() => void) | undefined = undefined;
-        if (AvailableBoard.is(item)) {
-            run = () => this.boardsServiceClient.boardsConfig = ({ selectedBoard: item, selectedPort: item.port });
-        } else if (ConfigOption.is(item)) {
-            run = () => console.log(`Alter the value of '${item.label}' Current is: ${item.values.filter(({ selected }) => selected).map(({ label }) => label)}`);
-        } else {
-            run = () => console.log(`Select '${item.name}' show the port!.`);
-        }
-        if (run) {
-            return (mode) => {
-                if (mode !== QuickOpenMode.OPEN) {
-                    return false;
-                }
-                run!();
-                return true;
+    protected toRun(run: (() => void)): ((mode: QuickOpenMode) => boolean) {
+        return (mode) => {
+            if (mode !== QuickOpenMode.OPEN) {
+                return false;
             }
+            run();
+            return true;
+        };
+    }
+
+    protected async setConfig(config: ConfigOption): Promise<void> {
+        const toItems = (value: ConfigValue) => new QuickOpenItem<QuickOpenItemOptions>({
+            label: value.label,
+            iconClass: value.selected ? 'fa fa-check' : '',
+            run: this.toRun(() => {
+                if (!this.selectedBoard) {
+                    this.logger.warn(`Could not alter the boards settings. No board selected. ${JSON.stringify(config)}`);
+                    return;
+                }
+                if (!this.selectedBoard.fqbn) {
+                    this.logger.warn(`Could not alter the boards settings. The selected board does not have a FQBN. ${JSON.stringify(this.selectedBoard)}`);
+                    return;
+                }
+                const { fqbn } = this.selectedBoard;
+                this.configStore.setSelected({
+                    fqbn,
+                    option: config.option,
+                    selectedValue: value.value
+                });
+            })
+        });
+        const options = {
+            placeholder: `Configure '${config.label}'. Press 'Enter' to confirm or 'Escape' to cancel.`,
+            fuzzyMatchLabel: true
         }
-        return undefined;
+        this.quickOpenService.open({
+            onType: (lookFor, acceptor) => {
+                const fuzzyFilter = this.fuzzyFilter(lookFor);
+                acceptor(config.values
+                    .filter(({ label }) => fuzzyFilter(label))
+                    .sort((left, right) => naturalCompare(left.label, right.label))
+                    .map(toItems));
+            }
+        }, options);
     }
 
 }

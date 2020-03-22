@@ -1,9 +1,9 @@
 import { isWindows, isOSX } from '@theia/core/lib/common/os';
 import { JsonRpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
+import { naturalCompare } from './../utils';
 import { Searchable } from './searchable';
 import { Installable } from './installable';
 import { ArduinoComponent } from './arduino-component';
-const naturalCompare: (left: string, right: string) => number = require('string-natural-compare').caseInsensitive;
 
 export interface AttachedBoardsChangeEvent {
     readonly oldState: Readonly<{ boards: Board[], ports: Port[] }>;
