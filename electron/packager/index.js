@@ -139,7 +139,8 @@ ${fs.readFileSync(path('..', 'build', 'package.json')).toString()}
     //-----------------------------------+
     // Package the electron application. |
     //-----------------------------------+
-    exec(`yarn --network-timeout 1000000 --cwd ${path('..', 'build')} package`, `Packaging your Arduino Pro IDE application`);
+    const arch = process.platform === 'linux' ? ' --ia32 --x64' : '';
+    exec(`yarn --network-timeout 1000000 --cwd ${path('..', 'build')} package${arch}`, `Packaging your Arduino Pro IDE application`);
 
     //-----------------------------------------------------------------------------------------------------+
     // Copy to another folder. Azure does not support wildcard for `PublishBuildArtifacts@1.pathToPublish` |

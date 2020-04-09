@@ -13,10 +13,10 @@ jobs:
     matrix:
       linux:
         imageName: 'ubuntu-16.04'
-      mac:
-        imageName: 'macos-10.14'
-      windows:
-        imageName: 'vs2017-win2016'
+      # mac:
+      #   imageName: 'macos-10.14'
+      # windows:
+      #   imageName: 'vs2017-win2016'
   pool:
     vmImage: $(imageName)
   steps:
@@ -37,7 +37,8 @@ jobs:
   - script: yarn test
     displayName: Test
   - bash: |
-      ./electron/packager/conf-node-gyp.sh
+      node ./electron/packager/scripts/install-multilib-gcc.js
+      ./electron/packager/scripts/conf-node-gyp.sh
       yarn --cwd ./electron/packager/
       yarn --cwd ./electron/packager/ package
     env:
