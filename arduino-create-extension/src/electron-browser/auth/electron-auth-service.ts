@@ -3,7 +3,7 @@ import { AuthService, Token } from "../../browser/auth/auth-service";
 import { Authentication, AuthOptions } from "auth0-js";
 import { Random } from "@phosphor/coreutils/lib/random";
 import { sha256 } from "hash.js";
-import * as electron from 'electron';
+import { remote } from 'electron';
 import { Deferred } from "@theia/core/lib/common/promise-util";
 
 interface AuthOptions2 extends AuthOptions {
@@ -101,12 +101,39 @@ export class ElectronAuthService extends AuthService {
         const auth0 = new Authentication(this.authOptions);
         const authorizeUrl = auth0.buildAuthorizeUrl({});
 
-        const authWindow = new electron.remote.BrowserWindow({
+        const authWindow = new remote.BrowserWindow({
             width: 800,
             height: 600,
-            alwaysOnTop: true,
             title: "Log in",
             backgroundColor: "#202020"
+        });
+
+        const contextMenuListener = (_: Electron.Event, params: Electron.ContextMenuParams) => {
+            const { selectionText, isEditable } = params;
+            const selectionMenu = remote.Menu.buildFromTemplate([
+                { role: 'copy' },
+                { type: 'separator' },
+                { role: 'selectAll' },
+            ]);
+
+            const inputMenu = remote.Menu.buildFromTemplate([
+                { role: 'undo' },
+                { role: 'redo' },
+                { type: 'separator' },
+                { role: 'cut' },
+                { role: 'copy' },
+                { role: 'paste' },
+                { type: 'separator' },
+                { role: 'selectAll' },
+            ]);
+            if (isEditable) {
+                inputMenu.popup();
+            } else if (selectionText && selectionText.trim() !== '') {
+                selectionMenu.popup();
+            }
+        };
+        authWindow.webContents.on('dom-ready', () => {
+            authWindow.webContents.on('context-menu', contextMenuListener);
         });
 
         authWindow.webContents.on("did-navigate" as any, (event: any, href: string) => {
@@ -117,7 +144,10 @@ export class ElectronAuthService extends AuthService {
             }
         });
 
-        authWindow.on("close", result.reject);
+        authWindow.on("close", () => {
+            authWindow.webContents.removeListener('context-menu', contextMenuListener);
+            result.reject();
+        });
 
         authWindow.loadURL(authorizeUrl);
         return result.promise;
