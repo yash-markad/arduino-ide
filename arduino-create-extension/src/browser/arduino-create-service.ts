@@ -84,14 +84,14 @@ export class ArduinoCreateService {
             if (this.authService.isAuthorized) {
                 const ws = this.workspaceService.workspace;
                 if (ws && !(changes.length === 1 && changes[0].uri.displayName === ARDUINO_CREATE_SKETCH_MARKER_FILE)) {
-                    this.sync(ws.uri);
+                    this.sync(ws.resource.toString());
                 }
             }
         });
         this.workspaceService.onWorkspaceChanged(async fileStats => {
             if (this.authService.isAuthorized) {
                 await Promise.all(fileStats.map(async sketchFileStat => {
-                    this.sync(sketchFileStat.uri);
+                    this.sync(sketchFileStat.resource.toString());
                 }));
             }
         })
@@ -157,7 +157,7 @@ export class ArduinoCreateService {
     async addCreateSketch(): Promise<void> {
         const roots = await this.workspaceService.roots;
         for (const root of roots) {
-            const sketchURI = new URI(root.uri);
+            const sketchURI = root.resource;
             if (!await this.isValidSketch(sketchURI)) {
                 throw new Error("The Workspace has to be a valid Arduino Sketch");
             }
