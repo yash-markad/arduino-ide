@@ -9,7 +9,7 @@
     "@theia/core": "next",
     "@theia/electron": "next",
     "@types/auth0-js": "8.11.2",
-    "arduino-ide-extension": "0.0.7",
+    "arduino-ide-extension": "0.1.2",
     "auth0-js": "9.11.3",
     "hash.js": "^1.1.7"
   },

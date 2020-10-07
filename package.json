@@ -28,8 +28,8 @@
   },
   "workspaces": [
     "arduino-ide-extension",
-    "arduino-debugger-extension",
     "arduino-create-extension",
+    "arduino-debugger-extension",
     "electron-app",
     "browser-app"
   ],
