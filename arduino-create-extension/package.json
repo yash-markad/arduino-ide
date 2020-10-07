@@ -5,16 +5,6 @@
   "repository": "https://github.com/bcmi-labs/arduino-editor.git",
   "author": "Arduino SA",
   "license": "MIT",
-  "engines": {
-    "node": ">=10.11.0 <12"
-  },
-  "keywords": [
-    "theia-extension"
-  ],
-  "files": [
-    "lib",
-    "src"
-  ],
   "dependencies": {
     "@theia/core": "next",
     "@theia/electron": "next",
@@ -30,6 +20,19 @@
     "build": "tsc && yarn lint",
     "watch": "tsc -w"
   },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "theiaExtensions": [
+    {
+      "frontend": "lib/browser/arduino-create-extension-frontend-module"
+    },
+    {
+      "frontendElectron": "lib/electron-browser/arduino-create-electron-frontend-module",
+      "backend": "lib/node/arduino-create-backend-module"
+    }
+  ],
   "theia": {
     "frontend": {
       "config": {
@@ -40,14 +43,5 @@
         }
       }
     }
-  },
-  "theiaExtensions": [
-    {
-      "frontend": "lib/browser/arduino-create-extension-frontend-module"
-    },
-    {
-      "frontendElectron": "lib/electron-browser/arduino-create-electron-frontend-module",
-      "backend": "lib/node/arduino-create-backend-module"
-    }
-  ]
+  }
 }
