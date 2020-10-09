@@ -1,14 +1,15 @@
-import { injectable, inject } from "inversify";
+import { injectable, inject } from 'inversify';
+import { Event, Emitter } from '@theia/core/lib/common/event';
 
 export interface Token {
     access_token: string;
     refresh_token: string;
-    scope: "offline_access" | string;
+    scope: 'offline_access' | string;
     /**
      * expires in seconds
      */
     expires_in: number;
-    token_type: "Bearer" | string;
+    token_type: 'Bearer' | string;
 }
 export namespace Token {
     export function is(thing: any): thing is Token {
@@ -67,6 +68,8 @@ export class AuthService {
     @inject(TokenStore)
     protected store: TokenStore;
 
+    protected readonly onAuthorizedEmitter = new Emitter<void>();
+
     get isAuthorized(): boolean {
         return !this.store.expired;
     }
@@ -77,6 +80,14 @@ export class AuthService {
 
     authorize(): Promise<Token> {
         return this.getToken();
+    }
+
+    get onAuthorized(): Event<void> {
+        return this.onAuthorizedEmitter.event;
+    }
+
+    protected fireAuthorized(): void {
+        this.onAuthorizedEmitter.fire();
     }
 
 }

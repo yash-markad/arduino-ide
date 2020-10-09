@@ -6,6 +6,8 @@ import { ArduinoCreateAPI } from './create-api/arduino-create-api';
 import { AuthService, TokenStore } from './auth/auth-service';
 import { ArduinoCreateSketchManager } from './arduino-create-sketch-manager';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser';
+import { Contribution } from 'arduino-ide-extension/lib/browser/contributions/contribution';
+import { SignIn } from './contributions/signin';
 
 export default new ContainerModule(bind => {
 
@@ -21,4 +23,6 @@ export default new ContainerModule(bind => {
     bind(TokenStore).toSelf().inSingletonScope();
 
     bind(ArduinoCreateSketchManager).toSelf().inSingletonScope();
+
+    Contribution.configure(bind, SignIn);
 });

@@ -1,0 +1,17 @@
+.sketchbook-widget .theia-header {
+    text-transform: none;
+}
+
+.sketchbook-widget .theia-Tree.theia-FileTree {
+    height: 100%;
+}
+
+.sketchbook-widget-toolbar {
+    height: 180px;
+    background-color: red;
+}
+
+.sketchbook-widget-to-scroll {
+    height: 2000px;
+    background-color: gold;
+}

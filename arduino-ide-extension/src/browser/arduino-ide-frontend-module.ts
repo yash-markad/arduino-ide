@@ -121,6 +121,9 @@ import { OutputServiceImpl } from './output-service-impl';
 import { OutputServicePath, OutputService } from '../common/protocol/output-service';
 import { NotificationCenter } from './notification-center';
 import { NotificationServicePath, NotificationServiceServer } from '../common/protocol';
+import { SketchWidgetFactory, createWidgetContainer, SketchWidget, SketchProps } from './sketchbook/sketch-widget';
+import { SketchbookWidget } from './sketchbook/sketchbook-widget';
+import { SketchbookWidgetFrontendContribution } from './sketchbook/sketchbook-widget-frontend-contribution';
 
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
@@ -333,4 +336,14 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
 
     bind(NotificationCenter).toSelf().inSingletonScope();
     bind(NotificationServiceServer).toDynamicValue(context => WebSocketConnectionProvider.createProxy(context.container, NotificationServicePath)).inSingletonScope();
+
+    // Sketchbook
+    bind(SketchbookWidget).toSelf();
+    bindViewContribution(bind, SketchbookWidgetFrontendContribution);
+    bind(WidgetFactory).toDynamicValue(({ container }) => ({
+        id: SketchbookWidget.WIDGET_ID,
+        createWidget: () => container.get(SketchbookWidget)
+    }));
+    bind(FrontendApplicationContribution).toService(SketchbookWidgetFrontendContribution);
+    bind(SketchWidgetFactory).toFactory(({ container }) => (props: SketchProps) => createWidgetContainer(container, props).get(SketchWidget));
 });

@@ -31,12 +31,13 @@ export class ElectronAuthService extends AuthService {
         const token = this.store.getToken();
         if (token) {
             if (!this.store.expired) {
+                this.fireAuthorized();
                 return token;
             } else {
                 if (token.refresh_token) {
                     const newToken = await this.refreshToken(token);
                     this.store.setToken(newToken);
-
+                    this.fireAuthorized();
                     return newToken;
                 } else {
                     return await this.getTokenFromLogin();
@@ -156,6 +157,7 @@ export class ElectronAuthService extends AuthService {
     protected async getTokenFromLogin(): Promise<Token> {
         const token = await this.login();
         this.store.setToken(token);
+        this.fireAuthorized();
         return token;
     }
 
