@@ -4,7 +4,7 @@ import { MaybePromise } from '@theia/core/lib/common/types';
 import { ViewContainer } from '@theia/core/lib/browser/view-container';
 import { StatefulWidget } from '@theia/core/lib/browser/shell/shell-layout-restorer';
 import { ApplicationShell } from '@theia/core/lib/browser/shell/application-shell';
-import { BaseWidget, Message, Widget } from '@theia/core/lib/browser/widgets/widget';
+import { BaseWidget, Message, Widget, MessageLoop } from '@theia/core/lib/browser/widgets/widget';
 import { SketchWidgetFactory } from './sketch-widget';
 import { SketchesService, Sketch } from '../../common/protocol';
 import { Disposable } from '@theia/core';
@@ -66,6 +66,7 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.toDispose.push(
             this.viewContainer
         );
+        this.update();
     }
 
     protected async loadSketches(sketches: MaybePromise<Sketch[]> = this.sketchesService.getSketches()): Promise<void> {
@@ -80,8 +81,8 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.updateScrollBar();
     }
 
-    protected onActivateRequest(msg: Message): void {
-        super.onActivateRequest(msg);
+    protected onAfterAttach(msg: Message): void {
+        super.onAfterAttach(msg);
         Widget.attach(this.toolbar, this.toolbarNode);
         Widget.attach(this.viewContainer, this.contentNode);
         this.toDisposeOnDetach.push(Disposable.create(() => Widget.detach(this.toolbar)));
@@ -89,6 +90,16 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.updateScrollBar();
         this.deferredContainer.resolve(this.viewContainer.node);
         // TODO: focus the desired HTMLElement
+    }
+
+    protected onResize(message: Widget.ResizeMessage): void {
+        super.onResize(message);
+        MessageLoop.sendMessage(this.viewContainer, Widget.ResizeMessage.UnknownSize);
+    }
+
+    protected onAfterShow(msg: Message): void {
+        super.onAfterShow(msg);
+        this.onResize(Widget.ResizeMessage.UnknownSize);
     }
 
     getTrackableWidgets(): Widget[] {
