@@ -8,6 +8,7 @@ import { BaseWidget, Message, Widget } from '@theia/core/lib/browser/widgets/wid
 import { SketchWidgetFactory } from './sketch-widget';
 import { SketchesService, Sketch } from '../../common/protocol';
 import { Disposable } from '@theia/core';
+import { SketchbookViewContainerFactory } from './sketchbook-view-container';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget implements StatefulWidget, ApplicationShell.TrackableWidgetProvider {
@@ -18,8 +19,8 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
     @inject(SketchesService)
     protected readonly sketchesService: SketchesService;
 
-    @inject(ViewContainer.Factory)
-    protected readonly viewContainerFactory: ViewContainer.Factory;
+    @inject(SketchbookViewContainerFactory)
+    protected readonly viewContainerFactory: SketchbookViewContainerFactory;
 
     @inject(SketchWidgetFactory)
     protected readonly widgetFactory: SketchWidgetFactory;

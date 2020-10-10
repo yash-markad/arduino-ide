@@ -33,7 +33,8 @@ import {
     ApplicationShell as TheiaApplicationShell,
     ShellLayoutRestorer as TheiaShellLayoutRestorer,
     CommonFrontendContribution as TheiaCommonFrontendContribution,
-    KeybindingRegistry as TheiaKeybindingRegistry
+    KeybindingRegistry as TheiaKeybindingRegistry,
+    ViewContainerIdentifier
 } from '@theia/core/lib/browser';
 import { MenuContribution } from '@theia/core/lib/common/menu';
 import { ApplicationShell } from './theia/core/application-shell';
@@ -124,6 +125,7 @@ import { NotificationServicePath, NotificationServiceServer } from '../common/pr
 import { SketchWidgetFactory, createWidgetContainer, SketchWidget, SketchProps } from './sketchbook/sketch-widget';
 import { SketchbookWidget } from './sketchbook/sketchbook-widget';
 import { SketchbookWidgetFrontendContribution } from './sketchbook/sketchbook-widget-frontend-contribution';
+import { SketchbookViewContainerFactory, SketchbookViewContainer } from './sketchbook/sketchbook-view-container';
 
 const ElementQueries = require('css-element-queries/src/ElementQueries');
 
@@ -346,4 +348,10 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
     }));
     bind(FrontendApplicationContribution).toService(SketchbookWidgetFrontendContribution);
     bind(SketchWidgetFactory).toFactory(({ container }) => (props: SketchProps) => createWidgetContainer(container, props).get(SketchWidget));
+    bind(SketchbookViewContainerFactory).toFactory(context => (options: ViewContainerIdentifier) => {
+        const container = context.container.createChild();
+        container.bind(ViewContainerIdentifier).toConstantValue(options);
+        container.bind(SketchbookViewContainer).toSelf().inSingletonScope();
+        return container.get(SketchbookViewContainer);
+    });
 });
