@@ -4,9 +4,10 @@ import { MaybePromise } from '@theia/core/lib/common/types';
 import { ViewContainer } from '@theia/core/lib/browser/view-container';
 import { StatefulWidget } from '@theia/core/lib/browser/shell/shell-layout-restorer';
 import { ApplicationShell } from '@theia/core/lib/browser/shell/application-shell';
-import { BaseWidget, PanelLayout, Message, Widget } from '@theia/core/lib/browser/widgets/widget';
+import { BaseWidget, Message, Widget } from '@theia/core/lib/browser/widgets/widget';
 import { SketchWidgetFactory } from './sketch-widget';
 import { SketchesService, Sketch } from '../../common/protocol';
+import { Disposable } from '@theia/core';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget implements StatefulWidget, ApplicationShell.TrackableWidgetProvider {
@@ -26,7 +27,9 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
     protected viewContainer: ViewContainer;
     protected readonly deferredContainer = new Deferred<HTMLElement>();
 
-    protected toScroll: Widget;
+    protected toolbar: Widget;
+    protected contentNode: HTMLElement;
+    protected toolbarNode: HTMLElement;
 
     @postConstruct()
     protected init(): void {
@@ -37,15 +40,17 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.title.iconClass = 'fa fa-book';
         this.addClass('sketchbook-widget');
 
-        const toolbar = new Widget();
-        toolbar.title.caption = 'Toolbar';
-        toolbar.title.label = 'Toolbar';
-        toolbar.addClass('sketchbook-widget-toolbar');
+        this.contentNode = document.createElement('div');
+        this.contentNode.classList.add('sketchbook-content');
+        this.toolbarNode = document.createElement('div');
+        this.toolbarNode.classList.add('sketchbook-toolbar');
+        this.contentNode.appendChild(this.toolbarNode);
+        this.node.appendChild(this.contentNode);
 
-        this.toScroll = new Widget();
-        this.toScroll.title.caption = 'ToScroll';
-        this.toScroll.title.label = 'ToScroll';
-        this.toScroll.addClass('sketchbook-widget-to-scroll');
+        this.toolbar = new Widget();
+        this.toolbar.title.caption = 'Toolbar';
+        this.toolbar.title.label = 'Toolbar';
+        this.toolbar.addClass('sketchbook-widget-toolbar');
 
         this.viewContainer = this.viewContainerFactory({
             id: `${SketchbookWidget.WIDGET_ID}-view-container`
@@ -60,12 +65,6 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.toDispose.push(
             this.viewContainer
         );
-
-        const layout = this.layout = new PanelLayout();
-        layout.addWidget(toolbar);
-        layout.addWidget(this.toScroll);
-        this.updateScrollBar();
-        // layout.addWidget(this.viewContainer);
     }
 
     protected async loadSketches(sketches: MaybePromise<Sketch[]> = this.sketchesService.getSketches()): Promise<void> {
@@ -75,14 +74,19 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
                 canHide: false,
                 initiallyCollapsed: true
             });
-            this.updateScrollBar();
         }
+        this.update();
+        this.updateScrollBar();
     }
 
     protected onActivateRequest(msg: Message): void {
         super.onActivateRequest(msg);
-        this.deferredContainer.resolve(this.toScroll.node);
+        Widget.attach(this.toolbar, this.toolbarNode);
+        Widget.attach(this.viewContainer, this.contentNode);
+        this.toDisposeOnDetach.push(Disposable.create(() => Widget.detach(this.toolbar)));
+        this.toDisposeOnDetach.push(Disposable.create(() => Widget.detach(this.viewContainer)));
         this.updateScrollBar();
+        this.deferredContainer.resolve(this.viewContainer.node);
         // TODO: focus the desired HTMLElement
     }
 
