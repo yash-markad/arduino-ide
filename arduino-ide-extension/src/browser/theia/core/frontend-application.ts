@@ -1,30 +1,42 @@
 import { injectable, inject } from 'inversify';
-import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { CommandService } from '@theia/core/lib/common/command';
-import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FrontendApplication as TheiaFrontendApplication } from '@theia/core/lib/browser/frontend-application';
-import { ArduinoCommands } from '../../arduino-commands';
+import { SketchesService, Sketch } from '../../../common/protocol';
+import { OpenSketch } from '../../contributions/open-sketch';
 
 @injectable()
 export class FrontendApplication extends TheiaFrontendApplication {
 
-    @inject(FileService)
-    protected readonly fileService: FileService;
-
-    @inject(WorkspaceService)
-    protected readonly workspaceService: WorkspaceService;
-
     @inject(CommandService)
     protected readonly commandService: CommandService;
 
+    @inject(SketchesService)
+    protected readonly sketchesService: SketchesService;
+
     protected async initializeLayout(): Promise<void> {
-        await super.initializeLayout();
-        const roots = await this.workspaceService.roots;
-        for (const root of roots) {
-            const exists = await this.fileService.exists(root.resource);
-            if (exists) {
-                await this.commandService.executeCommand(ArduinoCommands.OPEN_SKETCH_FILES.id, root.resource);
-            }
+        const [sketch] = await Promise.all([
+            this.sketch(),
+            super.initializeLayout()
+        ]);
+        if (sketch) {
+            await this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH_FILES.id, sketch);
+        }
+    }
+
+    protected async sketch(url: URL = new URL(window.location.href)): Promise<Sketch | undefined> {
+        const searchParams = url.searchParams;
+        if (!searchParams) {
+            return undefined;
+        }
+        const sketchUri = searchParams.get('sketchUri');
+        if (!sketchUri) {
+            return undefined;
+        }
+        try {
+            const sketch = await this.sketchesService.loadSketch(sketchUri);
+            return sketch;
+        } catch {
+            return undefined;
         }
     }
 

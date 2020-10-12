@@ -1,16 +1,17 @@
 import { injectable, postConstruct, inject } from 'inversify';
 import { Deferred } from '@theia/core/lib/common/promise-util';
+import { Disposable } from '@theia/core/lib/common/disposable'
 import { MaybePromise } from '@theia/core/lib/common/types';
 import { ViewContainer } from '@theia/core/lib/browser/view-container';
 import { StatefulWidget } from '@theia/core/lib/browser/shell/shell-layout-restorer';
+import { CommandRegistry } from '@theia/core/lib/common/command';
 import { ApplicationShell } from '@theia/core/lib/browser/shell/application-shell';
 import { BaseWidget, Message, Widget, MessageLoop } from '@theia/core/lib/browser/widgets/widget';
-import { SketchWidgetFactory, SketchWidget } from './sketch-widget';
-import { SketchesService, Sketch } from '../../common/protocol';
-import { Disposable, CommandRegistry } from '@theia/core';
-import { SketchbookViewContainerFactory } from './sketchbook-view-container';
+import { OpenSketch } from '../contributions/open-sketch';
 import { TabBarToolbarRegistry } from '../contributions/contribution';
-import { ArduinoCommands } from '../arduino-commands';
+import { SketchesService, Sketch } from '../../common/protocol';
+import { SketchbookViewContainerFactory } from './sketchbook-view-container';
+import { SketchWidgetFactory, SketchWidget } from './sketch-widget';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget implements StatefulWidget, ApplicationShell.TrackableWidgetProvider {
@@ -78,7 +79,7 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
             this.commandRegistry.registerCommand(openCommand, {
                 execute: widget => {
                     if (widget instanceof SketchWidget) {
-                        return this.commandRegistry.executeCommand(ArduinoCommands.OPEN_SKETCH_FILES.id, widget.sketch.uri);
+                        return this.commandRegistry.executeCommand(OpenSketch.Commands.OPEN_SKETCH_FILES.id, widget.sketch);
                     }
                 },
                 isEnabled: widget => widget instanceof SketchWidget,
@@ -87,7 +88,7 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
             this.commandRegistry.registerCommand(openInNewWindowCommand, {
                 execute: widget => {
                     if (widget instanceof SketchWidget) {
-                        return this.commandRegistry.executeCommand(ArduinoCommands.OPEN_SKETCH_FILES.id, widget.sketch.uri);
+                        return this.commandRegistry.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch: widget.sketch });
                     }
                 },
                 isEnabled: widget => widget instanceof SketchWidget,

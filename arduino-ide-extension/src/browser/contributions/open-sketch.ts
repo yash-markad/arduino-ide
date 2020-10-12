@@ -1,13 +1,15 @@
 import { inject, injectable } from 'inversify';
 import { remote } from 'electron';
 import { MaybePromise } from '@theia/core/lib/common/types';
+import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { Widget, ContextMenuRenderer } from '@theia/core/lib/browser';
 import { Disposable, DisposableCollection } from '@theia/core/lib/common/disposable';
 import { ArduinoMenus } from '../menu/arduino-menus';
 import { ArduinoToolbar } from '../toolbar/arduino-toolbar';
-import { SketchContribution, Sketch, URI, Command, CommandRegistry, MenuModelRegistry, KeybindingRegistry, TabBarToolbarRegistry } from './contribution';
 import { ExamplesService } from '../../common/protocol/examples-service';
+import { SketchContribution, Sketch, URI, Command, CommandRegistry, MenuModelRegistry, KeybindingRegistry, TabBarToolbarRegistry } from './contribution';
 import { BuiltInExamples } from './examples';
+import { WindowService } from '@theia/core/lib/browser/window/window-service';
 
 @injectable()
 export class OpenSketch extends SketchContribution {
@@ -24,11 +26,22 @@ export class OpenSketch extends SketchContribution {
     @inject(ExamplesService)
     protected readonly examplesService: ExamplesService;
 
+    @inject(EditorManager)
+    protected readonly editorManager: EditorManager;
+
+    @inject(WindowService)
+    protected readonly windowService: WindowService;
+
     protected readonly toDisposeBeforeCreateNewContextMenu = new DisposableCollection();
 
     registerCommands(registry: CommandRegistry): void {
         registry.registerCommand(OpenSketch.Commands.OPEN_SKETCH, {
-            execute: arg => Sketch.is(arg) ? this.openSketch(arg) : this.openSketch()
+            execute: arg => {
+                if (OpenSketch.Options.is(arg)) {
+                    return this.openSketch(arg.sketch, !!arg.preserveWindow);
+                }
+                return this.openSketch();
+            }
         });
         registry.registerCommand(OpenSketch.Commands.OPEN_SKETCH__TOOLBAR, {
             isVisible: widget => ArduinoToolbar.is(widget) && widget.side === 'left',
@@ -80,6 +93,21 @@ export class OpenSketch extends SketchContribution {
                 }
             }
         });
+        registry.registerCommand(OpenSketch.Commands.OPEN_SKETCH_FILES, {
+            execute: arg => {
+                let uri: URI | undefined = undefined;
+                if (arg instanceof URI) {
+                    uri = arg;
+                } else if (typeof arg === 'string') {
+                    uri = new URI(arg);
+                } else if (Sketch.is(arg)) {
+                    uri = new URI(arg.uri);
+                }
+                if (uri) {
+                    return this.openSketchFiles(uri);
+                }
+            }
+        });
     }
 
     registerMenus(registry: MenuModelRegistry): void {
@@ -106,10 +134,59 @@ export class OpenSketch extends SketchContribution {
         });
     }
 
-    async openSketch(toOpen: MaybePromise<Sketch | undefined> = this.selectSketch()): Promise<void> {
+    async openSketch(toOpen: MaybePromise<Sketch | undefined> = this.selectSketch(), preserveWindow: boolean = false): Promise<void> {
         const sketch = await toOpen;
         if (sketch) {
-            this.workspaceService.open(new URI(sketch.uri));
+            if (preserveWindow) {
+                return this.openSketchFiles(sketch);
+            } else {
+                const url = new URL(window.location.href);
+                // const config = await this.configService.getConfiguration();
+                // const sketchbookUri = config.sketchDirUri;
+
+                // Rewrite the URL.
+                url.searchParams.delete('sketchUri');
+                url.searchParams.set('sketchUri', sketch.uri.toString());
+
+                this.windowService.openNewWindow(url.toString());
+                // return this.workspaceService.open(new URI(sketchbookUri));
+            }
+        }
+    }
+
+    async openSketchFiles(sketchOrUri: URI | string | Sketch): Promise<void> {
+        const uri = sketchOrUri instanceof URI ? sketchOrUri : typeof sketchOrUri === 'string' ? new URI(sketchOrUri) : new URI(sketchOrUri.uri);
+        try {
+            const sketch = await this.sketchService.loadSketch(uri.toString());
+            const { mainFileUri, otherSketchFileUris, additionalFileUris } = sketch;
+            const toOpenUris = [mainFileUri, ...otherSketchFileUris, ...additionalFileUris];
+            for (const editor of this.editorManager.all) {
+                const openedEditorUri = editor.editor.uri.toString();
+                if (toOpenUris.indexOf(openedEditorUri) === -1) {
+                    editor.close();
+                }
+            }
+            for (const uri of toOpenUris) {
+                await this.ensureOpened(uri);
+            }
+            await this.ensureOpened(mainFileUri, true);
+
+            // Rewrite the URL.
+            const url = new URL(window.location.href);
+            url.searchParams.delete('sketchUri');
+            url.searchParams.set('sketchUri', uri.toString());
+            window.history.pushState({}, '', url.toString());
+        } catch (e) {
+            console.error(e);
+            const message = e instanceof Error ? e.message : JSON.stringify(e);
+            this.messageService.error(message);
+        }
+    }
+
+    protected async ensureOpened(uri: string, forceOpen: boolean = false): Promise<any> {
+        const widget = this.editorManager.all.find(widget => widget.editor.uri.toString() === uri);
+        if (!widget || forceOpen) {
+            return this.editorManager.open(new URI(uri));
         }
     }
 
@@ -175,5 +252,21 @@ export namespace OpenSketch {
         export const OPEN_SKETCH__TOOLBAR: Command = {
             id: 'arduino-open-sketch--toolbar'
         };
+        // TODO: check if we can use one command: `OPEN_SKETCH` for opening the sketch files, and opening a sketch too.
+        export const OPEN_SKETCH_FILES: Command = {
+            id: 'arduino-open-sketch-files'
+        };
+    }
+    export interface Options {
+        readonly sketch: Sketch;
+        /**
+         * `false` by default.
+         */
+        readonly preserveWindow?: boolean;
+    }
+    export namespace Options {
+        export function is(arg: Partial<Options> | undefined): arg is Options {
+            return !!arg && !!arg.sketch;
+        }
     }
 }

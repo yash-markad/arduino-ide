@@ -12,7 +12,7 @@ export class SketchbookWidgetFrontendContribution extends AbstractViewContributi
             widgetName: SketchbookWidget.WIDGET_LABEL,
             defaultWidgetOptions: {
                 area: 'left',
-                rank: 1000
+                rank: 100
             },
             toggleCommandId: `${SketchbookWidget.WIDGET_ID}:toggle`,
             toggleKeybinding: 'CtrlCmd+Shift+K'

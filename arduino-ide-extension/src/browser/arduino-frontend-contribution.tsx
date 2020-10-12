@@ -262,11 +262,6 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             execute: () => this.editorMode.toggleCompileForDebug(),
             isToggled: () => this.editorMode.compileForDebug
         });
-        registry.registerCommand(ArduinoCommands.OPEN_SKETCH_FILES, {
-            execute: async (uri: URI | string) => {
-                this.openSketchFiles(typeof uri === 'string' ? new URI(uri) : uri);
-            }
-        });
         registry.registerCommand(ArduinoCommands.OPEN_BOARDS_DIALOG, {
             execute: async () => {
                 const boardsConfig = await this.boardsConfigDialog.open();
@@ -309,31 +304,6 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             commandId: ArduinoCommands.TOGGLE_ADVANCED_MODE.id,
             label: 'Advanced Mode'
         });
-    }
-
-    protected async openSketchFiles(uri: URI): Promise<void> {
-        try {
-            for (const editor of this.editorManager.all) {
-                editor.dispose();
-            }
-            const sketch = await this.sketchService.loadSketch(uri.toString());
-            const { mainFileUri, otherSketchFileUris, additionalFileUris } = sketch;
-            for (const uri of [mainFileUri, ...otherSketchFileUris, ...additionalFileUris]) {
-                await this.ensureOpened(uri);
-            }
-            await this.ensureOpened(mainFileUri, true);
-        } catch (e) {
-            console.error(e);
-            const message = e instanceof Error ? e.message : JSON.stringify(e);
-            this.messageService.error(message);
-        }
-    }
-
-    protected async ensureOpened(uri: string, forceOpen: boolean = false): Promise<any> {
-        const widget = this.editorManager.all.find(widget => widget.editor.uri.toString() === uri);
-        if (!widget || forceOpen) {
-            return this.editorManager.open(new URI(uri));
-        }
     }
 
     registerColors(colors: ColorRegistry): void {
