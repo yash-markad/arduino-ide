@@ -263,8 +263,8 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             isToggled: () => this.editorMode.compileForDebug
         });
         registry.registerCommand(ArduinoCommands.OPEN_SKETCH_FILES, {
-            execute: async (uri: URI) => {
-                this.openSketchFiles(uri);
+            execute: async (uri: URI | string) => {
+                this.openSketchFiles(typeof uri === 'string' ? new URI(uri) : uri);
             }
         });
         registry.registerCommand(ArduinoCommands.OPEN_BOARDS_DIALOG, {
@@ -313,6 +313,9 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
 
     protected async openSketchFiles(uri: URI): Promise<void> {
         try {
+            for (const editor of this.editorManager.all) {
+                editor.dispose();
+            }
             const sketch = await this.sketchService.loadSketch(uri.toString());
             const { mainFileUri, otherSketchFileUris, additionalFileUris } = sketch;
             for (const uri of [mainFileUri, ...otherSketchFileUris, ...additionalFileUris]) {

@@ -64,6 +64,10 @@ export class SketchWidget extends FileTreeWidget {
         });
     }
 
+    get sketch(): Sketch {
+        return this.model.sketch;
+    }
+
 }
 
 export const SketchWidgetFactory = Symbol('SketchWidgetFactory');

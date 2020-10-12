@@ -5,10 +5,12 @@ import { ViewContainer } from '@theia/core/lib/browser/view-container';
 import { StatefulWidget } from '@theia/core/lib/browser/shell/shell-layout-restorer';
 import { ApplicationShell } from '@theia/core/lib/browser/shell/application-shell';
 import { BaseWidget, Message, Widget, MessageLoop } from '@theia/core/lib/browser/widgets/widget';
-import { SketchWidgetFactory } from './sketch-widget';
+import { SketchWidgetFactory, SketchWidget } from './sketch-widget';
 import { SketchesService, Sketch } from '../../common/protocol';
-import { Disposable } from '@theia/core';
+import { Disposable, CommandRegistry } from '@theia/core';
 import { SketchbookViewContainerFactory } from './sketchbook-view-container';
+import { TabBarToolbarRegistry } from '../contributions/contribution';
+import { ArduinoCommands } from '../arduino-commands';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget implements StatefulWidget, ApplicationShell.TrackableWidgetProvider {
@@ -24,6 +26,12 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
 
     @inject(SketchWidgetFactory)
     protected readonly widgetFactory: SketchWidgetFactory;
+
+    @inject(CommandRegistry)
+    protected readonly commandRegistry: CommandRegistry;
+
+    @inject(TabBarToolbarRegistry)
+    protected readonly toolbarRegistry: TabBarToolbarRegistry;
 
     protected viewContainer: ViewContainer;
     protected readonly deferredContainer = new Deferred<HTMLElement>();
@@ -63,9 +71,41 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
 
         this.loadSketches();
 
-        this.toDispose.push(
-            this.viewContainer
-        );
+        const openCommand = { id: 'arduino-sketchbook--open-sketch' };
+        const openInNewWindowCommand = { id: 'arduino-sketchbook--open-sketch-in-new-window' };
+        this.toDispose.pushAll([
+            this.viewContainer,
+            this.commandRegistry.registerCommand(openCommand, {
+                execute: widget => {
+                    if (widget instanceof SketchWidget) {
+                        return this.commandRegistry.executeCommand(ArduinoCommands.OPEN_SKETCH_FILES.id, widget.sketch.uri);
+                    }
+                },
+                isEnabled: widget => widget instanceof SketchWidget,
+                isVisible: widget => widget instanceof SketchWidget
+            }),
+            this.commandRegistry.registerCommand(openInNewWindowCommand, {
+                execute: widget => {
+                    if (widget instanceof SketchWidget) {
+                        return this.commandRegistry.executeCommand(ArduinoCommands.OPEN_SKETCH_FILES.id, widget.sketch.uri);
+                    }
+                },
+                isEnabled: widget => widget instanceof SketchWidget,
+                isVisible: widget => widget instanceof SketchWidget
+            }),
+            this.toolbarRegistry.registerItem({
+                id: openCommand.id,
+                command: openCommand.id,
+                icon: 'fa fa-folder-open-o',
+                priority: 1
+            }),
+            this.toolbarRegistry.registerItem({
+                id: openInNewWindowCommand.id,
+                command: openInNewWindowCommand.id,
+                icon: 'fa fa-external-link',
+                priority: 2
+            }),
+        ]);
         this.update();
     }
 
