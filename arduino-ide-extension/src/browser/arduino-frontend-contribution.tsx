@@ -46,6 +46,7 @@ const debounce = require('lodash.debounce');
 import { OutputService } from '../common/protocol/output-service';
 import { NotificationCenter } from './notification-center';
 import { Settings } from './contributions/settings';
+import { SketchesServiceClientImpl } from '../common/protocol/sketches-service-client-impl';
 
 @injectable()
 export class ArduinoFrontendContribution implements FrontendApplicationContribution,
@@ -148,6 +149,9 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
 
     @inject(NotificationCenter)
     protected readonly notificationCenter: NotificationCenter;
+
+    @inject(SketchesServiceClientImpl)
+    protected readonly sketchesServiceClient: SketchesServiceClientImpl;
 
     protected invalidConfigPopup: Promise<void | 'No' | 'Yes' | undefined> | undefined;
 
@@ -279,6 +283,17 @@ export class ArduinoFrontendContribution implements FrontendApplicationContribut
             isToggled: () => this.editorMode.proMode,
             execute: () => this.editorMode.toggleProMode()
         });
+        registry.registerCommand({ id: 'arduino-print-URL-info', label: 'Print URL info' }, {
+            execute: async () => {
+                const [config, roots, sketch, sketchUri] = await Promise.all([
+                    this.configService.getConfiguration(),
+                    this.workspaceService.roots,
+                    this.sketchesServiceClient.currentSketch(),
+                    Promise.resolve(new URL(window.location.href).searchParams.get('sketchUri'))
+                ]);
+                this.messageService.info(`sketchbook: ${config.sketchDirUri}, roots: ${roots.map(r => r.resource)}, sketch: ${sketch?.uri}, sketchURI; ${sketchUri}`);
+            }
+        })
     }
 
     registerMenus(registry: MenuModelRegistry) {
