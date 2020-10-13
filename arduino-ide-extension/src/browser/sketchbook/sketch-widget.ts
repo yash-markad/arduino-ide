@@ -1,12 +1,11 @@
 import { inject, injectable, interfaces, Container } from 'inversify';
-// import { FileDialogModel } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-model';
-// import { FileDialogWidget } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-widget';
-import { ContextMenuRenderer } from '@theia/core/lib/browser/context-menu-renderer';
-import { TreeProps, TreeModel, Tree, defaultTreeProps } from '@theia/core/lib/browser/tree/';
-import { FileTreeWidget, DirNode, FileTree, FileTreeModel, createFileTreeContainer } from '@theia/filesystem/lib/browser';
-import { Sketch } from '../../common/protocol';
-import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import URI from '@theia/core/lib/common/uri';
+import { FileService } from '@theia/filesystem/lib/browser/file-service';
+import { ContextMenuRenderer } from '@theia/core/lib/browser/context-menu-renderer';
+import { open, OpenerService } from '@theia/core/lib/browser/opener-service';
+import { TreeProps, TreeModel, Tree, defaultTreeProps, TreeNode } from '@theia/core/lib/browser/tree/';
+import { FileTreeWidget, DirNode, FileTree, FileTreeModel, createFileTreeContainer, FileNode } from '@theia/filesystem/lib/browser';
+import { Sketch } from '../../common/protocol';
 
 export const SketchProps = Symbol('SketchProps');
 export interface SketchProps {
@@ -19,8 +18,19 @@ export class SketchTreeModel extends FileTreeModel {
     @inject(SketchProps)
     protected readonly props: SketchProps;
 
+    @inject(OpenerService)
+    protected readonly openerService: OpenerService;
+
     get sketch(): Sketch {
         return this.props.sketch;
+    }
+
+    protected doOpenNode(node: TreeNode): void {
+        if (FileNode.is(node)) {
+            open(this.openerService, node.uri);
+        } else {
+            super.doOpenNode(node);
+        }
     }
 
 }
