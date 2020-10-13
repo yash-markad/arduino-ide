@@ -49,6 +49,8 @@ export class SketchbookWidgetFrontendContribution extends AbstractViewContributi
                         if (type === FileChangeType.UPDATED) {
                             return;
                         }
+                        // XXX: this is unsafe here. I can create a folder `FooBar.ino` in the sketchbook without any sketch files.
+                        // TODO: check with file service whether the `resource` is a file or not.
                         if (resource.path.ext === '.ino' && sketchbookUri.isEqualOrParent(resource)) {
                             const widget = this.tryGetWidget();
                             if (!widget) {
