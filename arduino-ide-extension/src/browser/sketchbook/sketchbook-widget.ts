@@ -79,7 +79,7 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
             this.commandRegistry.registerCommand(openCommand, {
                 execute: widget => {
                     if (widget instanceof SketchWidget) {
-                        return this.commandRegistry.executeCommand(OpenSketch.Commands.OPEN_SKETCH_FILES.id, widget.sketch);
+                        return this.commandRegistry.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch: widget.sketch, preserveWindow: true });
                     }
                 },
                 isEnabled: widget => widget instanceof SketchWidget,

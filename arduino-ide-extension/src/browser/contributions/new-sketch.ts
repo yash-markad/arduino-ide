@@ -1,7 +1,8 @@
 import { injectable } from 'inversify';
 import { ArduinoMenus } from '../menu/arduino-menus';
 import { ArduinoToolbar } from '../toolbar/arduino-toolbar';
-import { SketchContribution, URI, Command, CommandRegistry, MenuModelRegistry, KeybindingRegistry, TabBarToolbarRegistry } from './contribution';
+import { OpenSketch } from './open-sketch';
+import { SketchContribution, Command, CommandRegistry, MenuModelRegistry, KeybindingRegistry, TabBarToolbarRegistry } from './contribution';
 
 @injectable()
 export class NewSketch extends SketchContribution {
@@ -43,7 +44,7 @@ export class NewSketch extends SketchContribution {
     async newSketch(): Promise<void> {
         try {
             const sketch = await this.sketchService.createNewSketch();
-            this.workspaceService.open(new URI(sketch.uri));
+            await this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch });
         } catch (e) {
             await this.messageService.error(e.toString());
         }

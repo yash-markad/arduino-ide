@@ -1,6 +1,5 @@
 import { inject, injectable } from 'inversify';
 import URI from '@theia/core/lib/common/uri';
-import { notEmpty } from '@theia/core/lib/common/objects';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -16,20 +15,26 @@ export class SketchesServiceClientImpl {
     protected readonly messageService: MessageService;
 
     @inject(SketchesService)
-    protected readonly sketchService: SketchesService;
+    protected readonly sketchesService: SketchesService;
 
     @inject(WorkspaceService)
     protected readonly workspaceService: WorkspaceService;
 
-    async currentSketch(): Promise<Sketch | undefined> {
-        const sketches = (await Promise.all(this.workspaceService.tryGetRoots().map(({ resource }) => this.sketchService.getSketchFolder(resource.toString())))).filter(notEmpty);
-        if (!sketches.length) {
+    async currentSketch(url: URL = new URL(window.location.href)): Promise<Sketch | undefined> {
+        const searchParams = url.searchParams;
+        if (!searchParams) {
             return undefined;
         }
-        if (sketches.length > 1) {
-            console.log(`Multiple sketch folders were found in the workspace. Falling back to the first one. Sketch folders: ${JSON.stringify(sketches)}`);
+        const sketchUri = searchParams.get('sketchUri');
+        if (!sketchUri) {
+            return undefined;
         }
-        return sketches[0];
+        try {
+            const sketch = await this.sketchesService.loadSketch(sketchUri);
+            return sketch;
+        } catch {
+            return undefined;
+        }
     }
 
     async currentSketchFile(): Promise<string | undefined> {
@@ -38,7 +43,7 @@ export class SketchesServiceClientImpl {
             const uri = sketch.mainFileUri;
             const exists = await this.fileService.exists(new URI(uri));
             if (!exists) {
-                this.messageService.warn(`Could not find sketch file: ${uri}`);
+                this.messageService.warn(`Could not find main sketch file: ${uri} in sketch: ${sketch.name} | ${sketch.uri}`);
                 return undefined;
             }
             return uri;

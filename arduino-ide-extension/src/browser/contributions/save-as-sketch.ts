@@ -2,6 +2,7 @@ import { injectable } from 'inversify';
 import { remote } from 'electron';
 import * as dateFormat from 'dateformat';
 import { ArduinoMenus } from '../menu/arduino-menus';
+import { OpenSketch } from './open-sketch';
 import { SketchContribution, URI, Command, CommandRegistry, MenuModelRegistry, KeybindingRegistry } from './contribution';
 
 @injectable()
@@ -58,14 +59,15 @@ export class SaveAsSketch extends SketchContribution {
         if (!destinationUri) {
             return false;
         }
-        const workspaceUri = await this.sketchService.copy(sketch, { destinationUri });
-        if (workspaceUri && openAfterMove) {
+        const newSketchUri = await this.sketchService.copy(sketch, { destinationUri });
+        if (newSketchUri && openAfterMove) {
             if (wipeOriginal) {
                 await this.fileService.delete(new URI(sketch.uri));
             }
-            this.workspaceService.open(new URI(workspaceUri), { preserveWindow: true });
+            const newSketch = await this.sketchService.loadSketch(newSketchUri);
+            this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch: newSketch, preserveWindow: true })
         }
-        return !!workspaceUri;
+        return !!newSketchUri;
     }
 
 }

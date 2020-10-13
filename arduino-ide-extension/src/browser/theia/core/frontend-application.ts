@@ -1,8 +1,8 @@
 import { injectable, inject } from 'inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { FrontendApplication as TheiaFrontendApplication } from '@theia/core/lib/browser/frontend-application';
-import { SketchesService, Sketch } from '../../../common/protocol';
 import { OpenSketch } from '../../contributions/open-sketch';
+import { SketchesServiceClientImpl } from '../../../common/protocol/sketches-service-client-impl';
 
 @injectable()
 export class FrontendApplication extends TheiaFrontendApplication {
@@ -10,33 +10,16 @@ export class FrontendApplication extends TheiaFrontendApplication {
     @inject(CommandService)
     protected readonly commandService: CommandService;
 
-    @inject(SketchesService)
-    protected readonly sketchesService: SketchesService;
+    @inject(SketchesServiceClientImpl)
+    protected readonly sketchesServiceClient: SketchesServiceClientImpl;
 
     protected async initializeLayout(): Promise<void> {
         const [sketch] = await Promise.all([
-            this.sketch(),
+            this.sketchesServiceClient.currentSketch(),
             super.initializeLayout()
         ]);
         if (sketch) {
-            await this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH_FILES.id, sketch);
-        }
-    }
-
-    protected async sketch(url: URL = new URL(window.location.href)): Promise<Sketch | undefined> {
-        const searchParams = url.searchParams;
-        if (!searchParams) {
-            return undefined;
-        }
-        const sketchUri = searchParams.get('sketchUri');
-        if (!sketchUri) {
-            return undefined;
-        }
-        try {
-            const sketch = await this.sketchesService.loadSketch(sketchUri);
-            return sketch;
-        } catch {
-            return undefined;
+            await this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch, preserveWindow: true });
         }
     }
 
