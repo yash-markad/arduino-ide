@@ -6,11 +6,6 @@
     height: 100%;
 }
 
-.sketchbook-widget-toolbar {
-    height: 180px;
-    background-color: red;
-}
-
 .sketchbook-widget .sketchbook-content {
     display: flex;
     flex-direction: column;
