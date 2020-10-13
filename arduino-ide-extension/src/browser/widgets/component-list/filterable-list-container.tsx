@@ -54,10 +54,10 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
     }
 
     protected renderComponentList(): React.ReactNode {
-        const { itemLabel, resolveContainer, itemRenderer } = this.props;
+        const { resolveContainer, itemRenderer, itemKey } = this.props;
         return <ComponentList<T>
             items={this.state.items}
-            itemLabel={itemLabel}
+            itemKey={itemKey}
             itemRenderer={itemRenderer}
             install={this.install.bind(this)}
             uninstall={this.uninstall.bind(this)}
@@ -124,6 +124,7 @@ export namespace FilterableListContainer {
         readonly installable: Installable<T>;
         readonly searchable: Searchable<T>;
         readonly itemLabel: (item: T) => string;
+        readonly itemKey: (item: T) => string;
         readonly itemRenderer: ListItemRenderer<T>;
         readonly resolveContainer: (element: HTMLElement) => void;
         readonly resolveFocus: (element: HTMLElement | undefined) => void;

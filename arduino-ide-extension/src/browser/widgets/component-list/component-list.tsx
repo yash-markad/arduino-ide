@@ -28,7 +28,7 @@ export class ComponentList<T extends ArduinoComponent> extends React.Component<C
 
     protected createItem(item: T): React.ReactNode {
         return <ComponentListItem<T>
-            key={this.props.itemLabel(item)}
+            key={this.props.itemKey(item)}
             item={item}
             itemRenderer={this.props.itemRenderer}
             install={this.props.install}
@@ -41,7 +41,7 @@ export namespace ComponentList {
 
     export interface Props<T extends ArduinoComponent> {
         readonly items: T[];
-        readonly itemLabel: (item: T) => string;
+        readonly itemKey: (item: T) => string;
         readonly itemRenderer: ListItemRenderer<T>;
         readonly install: (item: T, version?: Installable.Version) => Promise<void>;
         readonly uninstall: (item: T) => Promise<void>;

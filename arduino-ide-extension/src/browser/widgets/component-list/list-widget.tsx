@@ -77,6 +77,7 @@ export abstract class ListWidget<T extends ArduinoComponent> extends ReactWidget
             searchable={this.options.searchable}
             installable={this.options.installable}
             itemLabel={this.options.itemLabel}
+            itemKey={this.options.itemKey}
             itemRenderer={this.options.itemRenderer}
             filterTextChangeEvent={this.filterTextChangeEmitter.event} />;
     }
@@ -105,6 +106,7 @@ export namespace ListWidget {
         readonly installable: Installable<T>;
         readonly searchable: Searchable<T>;
         readonly itemLabel: (item: T) => string;
+        readonly itemKey: (item: T) => string;
         readonly itemRenderer: ListItemRenderer<T>;
     }
 }

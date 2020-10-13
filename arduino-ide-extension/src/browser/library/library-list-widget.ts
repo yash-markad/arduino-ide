@@ -20,6 +20,7 @@ export class LibraryListWidget extends ListWidget<LibraryPackage> {
             searchable: service,
             installable: service,
             itemLabel: (item: LibraryPackage) => item.name,
+            itemKey: (item: LibraryPackage) => item.name,
             itemRenderer
         });
     }

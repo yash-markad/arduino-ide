@@ -298,7 +298,7 @@ export class BoardsServiceImpl implements BoardsService, Disposable {
 
     async allBoards(options: {}): Promise<Array<Board & { packageName: string }>> {
         const results = await this.search(options);
-        return results.map(item => item.boards.map(board => ({ ...board, packageName: item.name })))
+        return results.map(item => item.boards.map(board => ({ ...board, packageName: item.id })))
             .reduce((acc, curr) => acc.concat(curr), []);
     }
 
