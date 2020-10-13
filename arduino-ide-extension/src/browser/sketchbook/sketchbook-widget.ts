@@ -118,6 +118,24 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
         this.updateScrollBar();
     }
 
+    async removeWidget(sketchUri: string): Promise<void> {
+        let shouldUpdate = false;
+        for (const part of this.viewContainer.getParts()) {
+            const wrapped = part.wrapped;
+            if (wrapped instanceof SketchWidget) {
+                if (Sketch.isInSketch(sketchUri, wrapped.sketch)) {
+                    // Update location.href or switch to another sketch maybe..
+                    this.viewContainer.removeWidget(wrapped);
+                    shouldUpdate = true;
+                }
+            }
+        }
+        if (shouldUpdate) {
+            this.update();
+            this.updateScrollBar();
+        }
+    }
+
     async addWidget(s: MaybePromise<Sketch | undefined>, update: boolean = false): Promise<void> {
         const sketch = await s;
         if (!sketch) {

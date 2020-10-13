@@ -46,13 +46,19 @@ export class SketchbookWidgetFrontendContribution extends AbstractViewContributi
                 this.fileService.watch(sketchbookUri),
                 this.fileService.onDidFilesChange(({ changes }) => {
                     for (const { type, resource } of changes) {
-                        if (type === FileChangeType.ADDED && resource.path.ext === '.ino' && sketchbookUri.isEqualOrParent(resource)) {
-                            this.sketchService.loadSketch(resource.toString()).then(sketch => {
-                                const widget = this.tryGetWidget();
-                                if (widget) {
-                                    widget.addWidget(sketch, true);
-                                }
-                            });
+                        if (type === FileChangeType.UPDATED) {
+                            return;
+                        }
+                        if (resource.path.ext === '.ino' && sketchbookUri.isEqualOrParent(resource)) {
+                            const widget = this.tryGetWidget();
+                            if (!widget) {
+                                return;
+                            }
+                            if (type === FileChangeType.ADDED) {
+                                this.sketchService.loadSketch(resource.toString()).then(sketch => widget.addWidget(sketch, true));
+                            } else if (type === FileChangeType.DELETED) {
+                                widget.removeWidget(resource.toString());
+                            }
                         }
                     }
                 })
