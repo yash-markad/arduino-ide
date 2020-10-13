@@ -129,7 +129,8 @@ export class OpenSketch extends SketchContribution {
                 const url = new URL(window.location.href);
                 url.searchParams.delete('sketchUri');
                 url.searchParams.set('sketchUri', sketch.uri.toString());
-                this.windowService.openNewWindow(url.toString());
+                await this.sketchServiceClient.storeSketchUri(sketch);
+                return this.windowService.openNewWindow(url.toString());
             }
         }
     }
@@ -138,6 +139,16 @@ export class OpenSketch extends SketchContribution {
         const uri = sketchOrUri instanceof URI ? sketchOrUri : typeof sketchOrUri === 'string' ? new URI(sketchOrUri) : new URI(sketchOrUri.uri);
         try {
             const sketch = await this.sketchService.loadSketch(uri.toString());
+
+            // Rewrite the URL of the current window.
+            // Make sure not to modify the `href`, otherwise the window reloads.
+            // Instead, push the desired URL, with the updated `sketchUri` query to the history stack.
+            const url = new URL(window.location.href);
+            url.searchParams.delete('sketchUri');
+            url.searchParams.set('sketchUri', uri.toString());
+            window.history.pushState({}, '', url.toString());
+            await this.sketchServiceClient.storeSketchUri(sketch);
+
             const { mainFileUri, otherSketchFileUris, additionalFileUris } = sketch;
             const toOpenUris = [mainFileUri, ...otherSketchFileUris, ...additionalFileUris];
             for (const editor of this.editorManager.all) {
@@ -150,14 +161,6 @@ export class OpenSketch extends SketchContribution {
                 await this.ensureOpened(uri);
             }
             await this.ensureOpened(mainFileUri, true);
-
-            // Rewrite the URL of the current window.
-            // Make sure not to modify the `href`, otherwise the window reloads.
-            // Instead, push the desired URL, with the updated `sketchUri` query to the history stack.
-            const url = new URL(window.location.href);
-            url.searchParams.delete('sketchUri');
-            url.searchParams.set('sketchUri', uri.toString());
-            window.history.pushState({}, '', url.toString());
         } catch (e) {
             console.error(e);
             const message = e instanceof Error ? e.message : JSON.stringify(e);
