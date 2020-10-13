@@ -112,14 +112,26 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
 
     protected async loadSketches(sketches: MaybePromise<Sketch[]> = this.sketchesService.getSketches()): Promise<void> {
         for (const sketch of await sketches) {
-            const widget = this.widgetFactory({ sketch });
-            this.viewContainer.addWidget(widget, {
-                canHide: false,
-                initiallyCollapsed: true
-            });
+            await this.addWidget(sketch);
         }
         this.update();
         this.updateScrollBar();
+    }
+
+    async addWidget(s: MaybePromise<Sketch | undefined>, update: boolean = false): Promise<void> {
+        const sketch = await s;
+        if (!sketch) {
+            return;
+        }
+        const widget = this.widgetFactory({ sketch });
+        this.viewContainer.addWidget(widget, {
+            canHide: false,
+            initiallyCollapsed: true
+        });
+        if (update) {
+            this.update();
+            this.updateScrollBar();
+        }
     }
 
     protected onAfterAttach(msg: Message): void {
