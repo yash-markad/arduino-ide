@@ -9,7 +9,7 @@ import { FileSystem } from '@theia/filesystem/lib/common';
 import URI from '@theia/core/lib/common/uri';
 import { EditorManager } from '@theia/editor/lib/browser';
 import { EditorMode } from "arduino-ide-extension/lib/browser/editor-mode";
-import { SketchesService } from 'arduino-ide-extension/lib/common/protocol/sketches-service';
+import { SketchesServiceClientImpl } from 'arduino-ide-extension/lib/common/protocol/sketches-service-client-impl';
 import { ArduinoToolbar } from 'arduino-ide-extension/lib/browser/toolbar/arduino-toolbar';
 import { ArduinoDebugConfigurationManager } from './arduino-debug-configuration-manager';
 
@@ -29,8 +29,8 @@ export class ArduinoDebugFrontendApplicationContribution extends DebugFrontendAp
     @inject(WorkspaceService)
     protected readonly workspaceService: WorkspaceService;
 
-    @inject(SketchesService)
-    protected readonly sketchesService: SketchesService;
+    @inject(SketchesServiceClientImpl)
+    protected readonly sketchesServiceClient: SketchesServiceClientImpl;
 
     @inject(FileSystem)
     protected readonly fileSystem: FileSystem;
@@ -62,7 +62,7 @@ export class ArduinoDebugFrontendApplicationContribution extends DebugFrontendAp
             if (current.configuration.type === 'arduino') {
                 const wsStat = this.workspaceService.workspace;
                 let sketchFileURI: URI | undefined;
-                if (wsStat && await this.sketchesService.isSketchFolder(wsStat.resource.toString())) {
+                if (wsStat && await this.sketchesServiceClient.isSketchFolder(wsStat.resource)) {
                     const wsPath = wsStat.resource.path;
                     const sketchFilePath = wsPath.join(wsPath.name + '.ino').toString();
                     sketchFileURI = new URI(sketchFilePath);

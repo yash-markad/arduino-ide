@@ -40,7 +40,7 @@ export class SketchControl extends SketchContribution {
                     return;
                 }
 
-                const { mainFileUri, otherSketchFileUris, additionalFileUris } = await this.sketchService.loadSketch(sketch.uri);
+                const { mainFileUri, otherSketchFileUris, additionalFileUris } = await this.sketchServiceClient.loadSketch(new URI(sketch.uri));
                 const uris = [mainFileUri, ...otherSketchFileUris, ...additionalFileUris];
                 for (let i = 0; i < uris.length; i++) {
                     const uri = new URI(uris[i]);

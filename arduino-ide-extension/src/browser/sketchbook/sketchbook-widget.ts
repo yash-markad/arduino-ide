@@ -12,6 +12,7 @@ import { TabBarToolbarRegistry } from '../contributions/contribution';
 import { SketchesService, Sketch } from '../../common/protocol';
 import { SketchbookViewContainerFactory } from './sketchbook-view-container';
 import { SketchWidgetFactory, SketchWidget } from './sketch-widget';
+import { SketchesServiceClientImpl } from '../../common/protocol/sketches-service-client-impl';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget implements StatefulWidget, ApplicationShell.TrackableWidgetProvider {
@@ -21,6 +22,9 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
 
     @inject(SketchesService)
     protected readonly sketchesService: SketchesService;
+
+    @inject(SketchesServiceClientImpl)
+    protected readonly sketchesServiceClient: SketchesServiceClientImpl;
 
     @inject(SketchbookViewContainerFactory)
     protected readonly viewContainerFactory: SketchbookViewContainerFactory;
@@ -105,12 +109,16 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
                 command: openInNewWindowCommand.id,
                 icon: 'fa fa-external-link',
                 priority: 2
-            }),
+            })
         ]);
         this.update();
     }
 
-    protected async loadSketches(sketches: MaybePromise<Sketch[]> = this.sketchesService.getSketches()): Promise<void> {
+    protected async sketches(): Promise<Sketch[]> {
+        return this.sketchesServiceClient.getSketches();
+    }
+
+    protected async loadSketches(sketches: MaybePromise<Sketch[]> = this.sketches()): Promise<void> {
         for (const sketch of await sketches) {
             await this.addWidget(sketch);
         }
@@ -124,7 +132,7 @@ export class SketchbookWidget extends BaseWidget implements StatefulWidget, Appl
             const wrapped = part.wrapped;
             if (wrapped instanceof SketchWidget) {
                 if (Sketch.isInSketch(sketchUri, wrapped.sketch)) {
-                    // Update location.href or switch to another sketch maybe..
+                    // TODO: Update `window.location.href` or switch to another sketch maybe.
                     this.viewContainer.removeWidget(wrapped);
                     shouldUpdate = true;
                 }

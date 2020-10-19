@@ -64,7 +64,7 @@ export class SaveAsSketch extends SketchContribution {
             if (wipeOriginal) {
                 await this.fileService.delete(new URI(sketch.uri));
             }
-            const newSketch = await this.sketchService.loadSketch(newSketchUri);
+            const newSketch = await this.sketchServiceClient.loadSketch(new URI(newSketchUri));
             this.commandService.executeCommand(OpenSketch.Commands.OPEN_SKETCH.id, { sketch: newSketch, preserveWindow: true })
         }
         return !!newSketchUri;

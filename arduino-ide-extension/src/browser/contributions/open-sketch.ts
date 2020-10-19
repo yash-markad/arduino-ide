@@ -46,7 +46,7 @@ export class OpenSketch extends SketchContribution {
         registry.registerCommand(OpenSketch.Commands.OPEN_SKETCH__TOOLBAR, {
             isVisible: widget => ArduinoToolbar.is(widget) && widget.side === 'left',
             execute: async (_: Widget, target: EventTarget) => {
-                const sketches = await this.sketchService.getSketches();
+                const sketches = await this.sketchServiceClient.getSketches();
                 if (!sketches.length) {
                     this.openSketch();
                 } else {
@@ -138,7 +138,7 @@ export class OpenSketch extends SketchContribution {
     protected async openSketchFiles(sketchOrUri: URI | string | Sketch): Promise<void> {
         const uri = sketchOrUri instanceof URI ? sketchOrUri : typeof sketchOrUri === 'string' ? new URI(sketchOrUri) : new URI(sketchOrUri.uri);
         try {
-            const sketch = await this.sketchService.loadSketch(uri.toString());
+            const sketch = await this.sketchServiceClient.loadSketch(uri);
 
             // Rewrite the URL of the current window.
             // Make sure not to modify the `href`, otherwise the window reloads.
@@ -196,7 +196,7 @@ export class OpenSketch extends SketchContribution {
         }
         const sketchFilePath = filePaths[0];
         const sketchFileUri = await this.fileSystemExt.getUri(sketchFilePath);
-        const sketch = await this.sketchService.getSketchFolder(sketchFileUri);
+        const sketch = await this.sketchServiceClient.getSketchFolder(new URI(sketchFileUri));
         if (sketch) {
             return sketch;
         }
@@ -222,7 +222,7 @@ export class OpenSketch extends SketchContribution {
                 }
                 await this.fileService.createFolder(newSketchUri);
                 await this.fileService.move(new URI(sketchFileUri), new URI(newSketchUri.resolve(nameWithExt).toString()));
-                return this.sketchService.getSketchFolder(newSketchUri.toString());
+                return this.sketchServiceClient.getSketchFolder(newSketchUri);
             }
         }
     }

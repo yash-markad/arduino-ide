@@ -8,8 +8,11 @@ import { ArduinoCreateSketchManager } from './arduino-create-sketch-manager';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { Contribution } from 'arduino-ide-extension/lib/browser/contributions/contribution';
 import { SignIn } from './contributions/signin';
+import { CreateSketchbookWidget } from './sketchbbook/create-sketchbook-widget';
+import { SketchbookWidget } from 'arduino-ide-extension/lib/browser/sketchbook/sketchbook-widget';
+import { FileServiceContribution } from '@theia/filesystem/lib/browser/file-service';
 
-export default new ContainerModule(bind => {
+export default new ContainerModule((bind, unbind, isBound, rebind) => {
 
     bind(ArduinoCreateExtensionFrontendContribution).toSelf().inSingletonScope();
     bind(CommandContribution).toService(ArduinoCreateExtensionFrontendContribution);
@@ -24,5 +27,9 @@ export default new ContainerModule(bind => {
 
     bind(ArduinoCreateSketchManager).toSelf().inSingletonScope();
 
+    bind(CreateSketchbookWidget).toSelf();
+    rebind(SketchbookWidget).to(CreateSketchbookWidget);
     Contribution.configure(bind, SignIn);
+
+    bind(FileServiceContribution).toService(ArduinoCreateAPI);
 });

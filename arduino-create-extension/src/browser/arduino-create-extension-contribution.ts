@@ -221,7 +221,7 @@ export class ArduinoCreateExtensionFrontendContribution extends ArduinoFrontendC
                 if (ws) {
                     const wsURI = ws.resource;
                     await this.service.sync(wsURI.path.toString());
-                    this.openSketchFiles(wsURI);
+                    // this.openSketchFiles(wsURI);
                     // this.registerCreateSketchesInMenu();
                 }
             }

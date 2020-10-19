@@ -6,7 +6,8 @@ import { DisposableCollection } from '@theia/core/lib/common/disposable';
 import { AbstractViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser/frontend-application';
 import { SketchbookWidget } from './sketchbook-widget';
-import { ConfigService, SketchesService } from '../../common/protocol';
+import { ConfigService } from '../../common/protocol';
+import { SketchesServiceClientImpl } from '../../common/protocol/sketches-service-client-impl';
 
 @injectable()
 export class SketchbookWidgetFrontendContribution extends AbstractViewContribution<SketchbookWidget> implements FrontendApplicationContribution {
@@ -17,8 +18,8 @@ export class SketchbookWidgetFrontendContribution extends AbstractViewContributi
     @inject(ConfigService)
     protected readonly configService: ConfigService;
 
-    @inject(SketchesService)
-    protected readonly sketchService: SketchesService;
+    @inject(SketchesServiceClientImpl)
+    protected readonly sketchService: SketchesServiceClientImpl;
 
     protected readonly toDispose = new DisposableCollection();
 
@@ -57,7 +58,7 @@ export class SketchbookWidgetFrontendContribution extends AbstractViewContributi
                                 return;
                             }
                             if (type === FileChangeType.ADDED) {
-                                this.sketchService.loadSketch(resource.toString()).then(sketch => widget.addWidget(sketch, true));
+                                this.sketchService.loadSketch(resource).then(sketch => widget.addWidget(sketch, true));
                             } else if (type === FileChangeType.DELETED) {
                                 widget.removeWidget(resource.toString());
                             }
