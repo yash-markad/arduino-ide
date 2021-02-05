@@ -1,22 +1,31 @@
 import * as React from 'react';
 import { injectable, postConstruct, inject } from 'inversify';
+import { Widget } from '@phosphor/widgets';
 import { Message } from '@phosphor/messaging';
-import { Deferred } from '@theia/core/lib/common/promise-util';
 import { Emitter } from '@theia/core/lib/common/event';
-import { MaybePromise } from '@theia/core/lib/common/types';
+import { Deferred } from '@theia/core/lib/common/promise-util';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
-import { Installable } from '../../../common/protocol/installable';
+import { MaybePromise } from '@theia/core/lib/common/types';
+import { MessageService } from '@theia/core/lib/common/message-service';
 import { Searchable } from '../../../common/protocol/searchable';
+import { Installable } from '../../../common/protocol/installable';
 import { ArduinoComponent } from '../../../common/protocol/arduino-component';
-import { FilterableListContainer } from './filterable-list-container';
-import { ListItemRenderer } from './list-item-renderer';
 import { NotificationCenter } from '../../notification-center';
+import { ResponseServiceImpl } from '../../response-service-impl';
+import { ListItemRenderer } from './list-item-renderer';
+import { FilterableListContainer } from './filterable-list-container';
 
 @injectable()
 export abstract class ListWidget<T extends ArduinoComponent> extends ReactWidget {
 
+    @inject(MessageService)
+    protected readonly messageService: MessageService;
+
     @inject(NotificationCenter)
     protected readonly notificationCenter: NotificationCenter;
+
+    @inject(ResponseServiceImpl)
+    protected readonly responseService: ResponseServiceImpl;
 
     /**
      * Do not touch or use it. It is for setting the focus on the `input` after the widget activation.
@@ -55,14 +64,19 @@ export abstract class ListWidget<T extends ArduinoComponent> extends ReactWidget
         return this.deferredContainer.promise;
     }
 
-    protected onActivateRequest(msg: Message): void {
-        super.onActivateRequest(msg);
+    protected onActivateRequest(message: Message): void {
+        super.onActivateRequest(message);
         (this.focusNode || this.node).focus();
     }
 
-    protected onUpdateRequest(msg: Message): void {
-        super.onUpdateRequest(msg);
+    protected onUpdateRequest(message: Message): void {
+        super.onUpdateRequest(message);
         this.render();
+    }
+
+    protected onResize(message: Widget.ResizeMessage): void {
+        super.onResize(message);
+        this.updateScrollBar();
     }
 
     protected onFocusResolved = (element: HTMLElement | undefined) => {
@@ -78,7 +92,9 @@ export abstract class ListWidget<T extends ArduinoComponent> extends ReactWidget
             installable={this.options.installable}
             itemLabel={this.options.itemLabel}
             itemRenderer={this.options.itemRenderer}
-            filterTextChangeEvent={this.filterTextChangeEmitter.event} />;
+            filterTextChangeEvent={this.filterTextChangeEmitter.event}
+            messageService={this.messageService}
+            responseService={this.responseService} />;
     }
 
     /**

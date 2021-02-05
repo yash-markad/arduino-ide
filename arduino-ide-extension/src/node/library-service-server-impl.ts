@@ -18,7 +18,7 @@ import { Installable } from '../common/protocol/installable';
 import { ILogger, notEmpty } from '@theia/core';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import { FileUri } from '@theia/core/lib/node';
-import { OutputService, NotificationServiceServer } from '../common/protocol';
+import { ResponseService, NotificationServiceServer } from '../common/protocol';
 
 @injectable()
 export class LibraryServiceImpl implements LibraryService {
@@ -29,8 +29,8 @@ export class LibraryServiceImpl implements LibraryService {
     @inject(CoreClientProvider)
     protected readonly coreClientProvider: CoreClientProvider;
 
-    @inject(OutputService)
-    protected readonly outputService: OutputService;
+    @inject(ResponseService)
+    protected readonly responseService: ResponseService;
 
     @inject(NotificationServiceServer)
     protected readonly notificationServer: NotificationServiceServer;
@@ -157,7 +157,7 @@ export class LibraryServiceImpl implements LibraryService {
         }).filter(notEmpty);
     }
 
-    async install(options: { item: LibraryPackage, version?: Installable.Version }): Promise<void> {
+    async install(options: { item: LibraryPackage, version?: Installable.Version, progressId?: string }): Promise<void> {
         await this.ready.promise;
         const item = options.item;
         const version = !!options.version ? options.version : item.availableVersions[0];
@@ -174,10 +174,71 @@ export class LibraryServiceImpl implements LibraryService {
 
         console.info('>>> Starting library package installation...', item);
         const resp = client.libraryInstall(req);
+        let _totalSize = -1;
+        let _file = '';
+        let _url = '';
         resp.on('data', (r: LibraryInstallResp) => {
             const prog = r.getProgress();
+            let chunk: string | undefined;
+            // Notes: the progress object is partial.
+            // When the download starts, the first object is `{ "file": "name@version", "totalSize": 420, "url": "https://some.link" }`.
+            // During the download the object is `{ "completed": false, "downloaded": 420 }`.
+            // When finished the object is `{ "completed": true }`.
             if (prog) {
-                this.outputService.append({ name: 'library', chunk: `downloading ${prog.getFile()}: ${prog.getCompleted()}%\n` });
+                // Start
+                if (!_file && prog.getFile()) {
+                    _file = prog.getFile();
+                }
+                if (_totalSize === -1 && prog.getTotalSize() > 0) {
+                    _totalSize = prog.getTotalSize();
+                }
+                if (!_url && prog.getUrl()) {
+                    _url = prog.getUrl();
+                }
+                // In progress
+                const downloaded = prog.getDownloaded();
+                // Finished
+                const completed = prog.getCompleted();
+                if (completed) {
+                    chunk = `Download ${_file} completed.\n`;
+                    if (options.progressId) {
+                        this.responseService.reportProgress({
+                            message: chunk,
+                            progressId: options.progressId,
+                            work: {
+                                done: _totalSize,
+                                total: _totalSize
+                            }
+                        });
+                    }
+                } else if (_file && !downloaded) {
+                    chunk = `Downloading ${_file}${_url ? ` ${_url}` : ''}...\n`;
+                    if (options.progressId) {
+                        this.responseService.reportProgress({
+                            message: chunk,
+                            progressId: options.progressId,
+                            work: {
+                                done: 0,
+                                total: _totalSize
+                            }
+                        });
+                    }
+                } else if (downloaded > 0 && _totalSize > 0) {
+                    chunk = `Downloading ${_file} [${Math.floor(_totalSize / downloaded)}%]\n`;
+                    if (options.progressId) {
+                        this.responseService.reportProgress({
+                            message: chunk,
+                            progressId: options.progressId,
+                            work: {
+                                done: downloaded,
+                                total: _totalSize
+                            }
+                        });
+                    }
+                }
+            }
+            if (chunk) {
+                this.responseService.appendToOutput({ name: 'library', chunk });
             }
         });
         await new Promise<void>((resolve, reject) => {
@@ -209,7 +270,7 @@ export class LibraryServiceImpl implements LibraryService {
         const resp = client.libraryUninstall(req);
         resp.on('data', (_: LibraryUninstallResp) => {
             if (!logged) {
-                this.outputService.append({ name: 'library', chunk: `uninstalling ${item.name}:${item.installedVersion}%\n` });
+                this.responseService.appendToOutput({ name: 'library', chunk: `uninstalling ${item.name}:${item.installedVersion}%\n` });
                 logged = true;
             }
         });

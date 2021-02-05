@@ -2,14 +2,18 @@ import * as React from 'react';
 import debounce = require('lodash.debounce');
 import { Event } from '@theia/core/lib/common/event';
 import { ConfirmDialog } from '@theia/core/lib/browser/dialogs';
+import { MessageService } from '@theia/core/lib/common/message-service';
+import { Progress } from '@theia/core/lib/common/message-service-protocol';
+import { CancellationToken, CancellationTokenSource } from '@theia/core/lib/common/cancellation';
 import { Searchable } from '../../../common/protocol/searchable';
 import { Installable } from '../../../common/protocol/installable';
 import { ArduinoComponent } from '../../../common/protocol/arduino-component';
-import { InstallationProgressDialog, UninstallationProgressDialog } from '../progress-dialog';
+import { UninstallationProgressDialog } from '../progress-dialog';
 import { SearchBar } from './search-bar';
 import { ListWidget } from './list-widget';
 import { ComponentList } from './component-list';
 import { ListItemRenderer } from './list-item-renderer';
+import { ResponseServiceImpl } from '../../response-service-impl';
 
 export class FilterableListContainer<T extends ArduinoComponent> extends React.Component<FilterableListContainer.Props<T>, FilterableListContainer.State<T>> {
 
@@ -81,16 +85,30 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
     }
 
     protected async install(item: T, version: Installable.Version): Promise<void> {
-        const { installable, searchable, itemLabel } = this.props;
-        const dialog = new InstallationProgressDialog(itemLabel(item), version);
-        dialog.open();
-        try {
-            await installable.install({ item, version });
-            const items = await searchable.search({ query: this.state.filterText });
-            this.setState({ items: this.sort(items) });
-        } finally {
-            dialog.close();
-        }
+        const { installable, searchable } = this.props;
+        await this.withProgress(item, async (progress, token) => {
+            const progressId = progress.id;
+            const toDispose = this.props.responseService.onProgressDidChange(progressMessage => {
+                if (progressId === progressMessage.progressId) {
+                    const { message, work } = progressMessage;
+                    progress.report({ message, work });
+                }
+            });
+            try {
+                await installable.install({ item, progressId, version });
+            } finally {
+                toDispose.dispose();
+            }
+        });
+        const items = await searchable.search({ query: this.state.filterText });
+        this.setState({ items: this.sort(items) });
+        // const dialog = new InstallationProgressDialog(itemLabel(item), version);
+        // dialog.open();
+        // try {
+        //     await ;
+        // } finally {
+        //     dialog.close();
+        // }
     }
 
     protected async uninstall(item: T): Promise<void> {
@@ -115,6 +133,19 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
         }
     }
 
+    protected async withProgress(item: T, cb: (progress: Progress, token: CancellationToken) => Promise<void>): Promise<T> {
+        const cancellationSource = new CancellationTokenSource();
+        const { token } = cancellationSource;
+        const text = this.props.itemLabel(item);
+        const progress = await this.props.messageService.showProgress({ text, options: { cancelable: false } }, () => cancellationSource.cancel());
+        try {
+            await cb(progress, token);
+            return item;
+        } finally {
+            progress.cancel();
+        }
+    }
+
 }
 
 export namespace FilterableListContainer {
@@ -128,6 +159,8 @@ export namespace FilterableListContainer {
         readonly resolveContainer: (element: HTMLElement) => void;
         readonly resolveFocus: (element: HTMLElement | undefined) => void;
         readonly filterTextChangeEvent: Event<string | undefined>;
+        readonly messageService: MessageService;
+        readonly responseService: ResponseServiceImpl;
     }
 
     export interface State<T> {

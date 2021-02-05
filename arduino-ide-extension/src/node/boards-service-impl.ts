@@ -4,7 +4,7 @@ import { notEmpty } from '@theia/core/lib/common/objects';
 import {
     BoardsService,
     Installable,
-    BoardsPackage, Board, Port, BoardDetails, Tool, ConfigOption, ConfigValue, Programmer, OutputService, NotificationServiceServer, AvailablePorts, BoardWithPackage
+    BoardsPackage, Board, Port, BoardDetails, Tool, ConfigOption, ConfigValue, Programmer, ResponseService, NotificationServiceServer, AvailablePorts, BoardWithPackage
 } from '../common/protocol';
 import {
     PlatformSearchReq, PlatformSearchResp, PlatformInstallReq, PlatformInstallResp, PlatformListReq,
@@ -28,8 +28,8 @@ export class BoardsServiceImpl implements BoardsService {
     @inject(CoreClientProvider)
     protected readonly coreClientProvider: CoreClientProvider;
 
-    @inject(OutputService)
-    protected readonly outputService: OutputService;
+    @inject(ResponseService)
+    protected readonly responseService: ResponseService;
 
     @inject(NotificationServiceServer)
     protected readonly notificationService: NotificationServiceServer;
@@ -271,7 +271,7 @@ export class BoardsServiceImpl implements BoardsService {
         resp.on('data', (r: PlatformInstallResp) => {
             const prog = r.getProgress();
             if (prog && prog.getFile()) {
-                this.outputService.append({ name: 'board download', chunk: `downloading ${prog.getFile()}\n` });
+                this.responseService.appendToOutput({ name: 'board download', chunk: `downloading ${prog.getFile()}\n` });
             }
         });
         await new Promise<void>((resolve, reject) => {
@@ -302,7 +302,7 @@ export class BoardsServiceImpl implements BoardsService {
         const resp = client.platformUninstall(req);
         resp.on('data', (_: PlatformUninstallResp) => {
             if (!logged) {
-                this.outputService.append({ name: 'board uninstall', chunk: `uninstalling ${item.id}\n` });
+                this.responseService.appendToOutput({ name: 'board uninstall', chunk: `uninstalling ${item.id}\n` });
                 logged = true;
             }
         })

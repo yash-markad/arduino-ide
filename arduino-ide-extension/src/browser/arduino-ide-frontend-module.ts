@@ -117,8 +117,8 @@ import { OutputChannelRegistryMainImpl as TheiaOutputChannelRegistryMainImpl, Ou
 import { ExecutableService, ExecutableServicePath } from '../common/protocol';
 import { MonacoTextModelService as TheiaMonacoTextModelService } from '@theia/monaco/lib/browser/monaco-text-model-service';
 import { MonacoTextModelService } from './theia/monaco/monaco-text-model-service';
-import { OutputServiceImpl } from './output-service-impl';
-import { OutputServicePath, OutputService } from '../common/protocol/output-service';
+import { ResponseServiceImpl } from './response-service-impl';
+import { ResponseServicePath, ResponseService } from '../common/protocol/response-service';
 import { NotificationCenter } from './notification-center';
 import { NotificationServicePath, NotificationServiceServer } from '../common/protocol';
 import { About } from './contributions/about';
@@ -349,11 +349,11 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
     Contribution.configure(bind, AddFile);
     Contribution.configure(bind, ArchiveSketch);
 
-    bind(OutputServiceImpl).toSelf().inSingletonScope().onActivation(({ container }, outputService) => {
-        WebSocketConnectionProvider.createProxy(container, OutputServicePath, outputService);
-        return outputService;
+    bind(ResponseServiceImpl).toSelf().inSingletonScope().onActivation(({ container }, responseService) => {
+        WebSocketConnectionProvider.createProxy(container, ResponseServicePath, responseService);
+        return responseService;
     });
-    bind(OutputService).toService(OutputServiceImpl);
+    bind(ResponseService).toService(ResponseServiceImpl);
 
     bind(NotificationCenter).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(NotificationCenter);

@@ -1,10 +1,11 @@
 import { inject, injectable } from 'inversify';
+import { Emitter } from '@theia/core/lib/common/event';
 import { OutputContribution } from '@theia/output/lib/browser/output-contribution';
 import { OutputChannelManager } from '@theia/output/lib/common/output-channel';
-import { OutputService, OutputMessage } from '../common/protocol/output-service';
+import { ResponseService, OutputMessage, ProgressMessage } from '../common/protocol/response-service';
 
 @injectable()
-export class OutputServiceImpl implements OutputService {
+export class ResponseServiceImpl implements ResponseService {
 
     @inject(OutputContribution)
     protected outputContribution: OutputContribution;
@@ -12,7 +13,10 @@ export class OutputServiceImpl implements OutputService {
     @inject(OutputChannelManager)
     protected outputChannelManager: OutputChannelManager;
 
-    append(message: OutputMessage): void {
+    protected readonly progressDidChangeEmitter = new Emitter<ProgressMessage>();
+    readonly onProgressDidChange = this.progressDidChangeEmitter.event;
+
+    appendToOutput(message: OutputMessage): void {
         const { name, chunk } = message;
         const channel = this.outputChannelManager.getChannel(`Arduino: ${name}`);
         // Zen-mode: we do not reveal the output for daemon messages.
@@ -23,6 +27,10 @@ export class OutputServiceImpl implements OutputService {
             : Promise.resolve(channel.show({ preserveFocus: true }));
 
         show.then(() => channel.append(chunk));
+    }
+
+    reportProgress(progress: ProgressMessage): void {
+        this.progressDidChangeEmitter.fire(progress);
     }
 
 }

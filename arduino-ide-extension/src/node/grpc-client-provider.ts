@@ -33,7 +33,7 @@ export abstract class GrpcClientProvider<C> {
             }
             this._client = undefined;
             this._port = undefined;
-        })
+        });
     }
 
     async client(): Promise<C | undefined> {
