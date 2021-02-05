@@ -175,62 +175,30 @@ export class LibraryServiceImpl implements LibraryService {
         console.info('>>> Starting library package installation...', item);
         const resp = client.libraryInstall(req);
         let _totalSize = -1;
-        let _file = '';
-        let _url = '';
         resp.on('data', (r: LibraryInstallResp) => {
-            const prog = r.getProgress();
-            // Notes: the progress object is partial.
-            // When the download starts, the first object is `{ "file": "name@version", "totalSize": 420, "url": "https://some.link" }`.
-            // During the download the object is `{ "completed": false, "downloaded": 420 }`.
-            // When finished the object is `{ "completed": true }`.
-            if (prog) {
-                // Start
-                if (!_file && prog.getFile()) {
-                    _file = prog.getFile();
+            const progress = r.getProgress();
+            if (progress) {
+                if (_totalSize === -1 && progress.getTotalSize() > 0) {
+                    _totalSize = progress.getTotalSize();
                 }
-                if (_totalSize === -1 && prog.getTotalSize() > 0) {
-                    _totalSize = prog.getTotalSize();
+                if (progressId) {
+                    this.responseService.reportProgress({
+                        progressId,
+                        work: {
+                            done: progress.getDownloaded() || _totalSize,
+                            total: _totalSize
+                        }
+                    });
                 }
-                if (!_url && prog.getUrl()) {
-                    _url = prog.getUrl();
-                }
-                // In progress
-                const downloaded = prog.getDownloaded();
-                // Finished
-                const completed = prog.getCompleted();
-                if (completed) {
-                    if (progressId) {
-                        this.responseService.reportProgress({
-                            message: `Installing library: ${item.name}:${version}`,
-                            progressId,
-                            work: {
-                                done: _totalSize,
-                                total: _totalSize
-                            }
-                        });
-                    }
-                } else if (_file && !downloaded) {
-                    if (progressId) {
-                        this.responseService.reportProgress({
-                            message: `Downloading library: ${item.name}`,
-                            progressId,
-                            work: {
-                                done: 0,
-                                total: _totalSize
-                            }
-                        });
-                    }
-                } else if (downloaded > 0 && _totalSize > 0) {
-                    if (progressId) {
-                        this.responseService.reportProgress({
-                            message: `Installing library: ${item.name}:${version}`,
-                            progressId,
-                            work: {
-                                done: downloaded,
-                                total: _totalSize
-                            }
-                        });
-                    }
+            }
+            const task = r.getTaskProgress();
+            if (task) {
+                const message = task.getName() || task.getMessage();
+                if (progressId && message) {
+                    this.responseService.reportProgress({
+                        message,
+                        progressId
+                    });
                 }
             }
         });

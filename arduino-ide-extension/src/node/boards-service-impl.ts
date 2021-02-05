@@ -252,8 +252,8 @@ export class BoardsServiceImpl implements BoardsService {
         return [...packages.values()];
     }
 
-    async install(options: { item: BoardsPackage, version?: Installable.Version }): Promise<void> {
-        const item = options.item;
+    async install(options: { item: BoardsPackage, version?: Installable.Version, progressId?: string, }): Promise<void> {
+        const { item, progressId } = options;
         const version = !!options.version ? options.version : item.availableVersions[0];
         const coreClient = await this.coreClient();
         const { client, instance } = coreClient;
@@ -268,10 +268,32 @@ export class BoardsServiceImpl implements BoardsService {
 
         console.info('>>> Starting boards package installation...', item);
         const resp = client.platformInstall(req);
+        let _totalSize = -1;
         resp.on('data', (r: PlatformInstallResp) => {
-            const prog = r.getProgress();
-            if (prog && prog.getFile()) {
-                this.responseService.appendToOutput({ name: 'board download', chunk: `downloading ${prog.getFile()}\n` });
+            const progress = r.getProgress();
+            if (progress) {
+                if (_totalSize === -1 && progress.getTotalSize() > 0) {
+                    _totalSize = progress.getTotalSize();
+                }
+                if (progressId) {
+                    this.responseService.reportProgress({
+                        progressId,
+                        work: {
+                            done: progress.getDownloaded() || _totalSize,
+                            total: _totalSize
+                        }
+                    });
+                }
+            }
+            const task = r.getTaskProgress();
+            if (task) {
+                const message = task.getName() || task.getMessage();
+                if (progressId && message) {
+                    this.responseService.reportProgress({
+                        message,
+                        progressId
+                    });
+                }
             }
         });
         await new Promise<void>((resolve, reject) => {

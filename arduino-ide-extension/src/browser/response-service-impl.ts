@@ -30,6 +30,7 @@ export class ResponseServiceImpl implements ResponseService {
     }
 
     reportProgress(progress: ProgressMessage): void {
+        console.log("***", JSON.stringify(progress));
         this.progressDidChangeEmitter.fire(progress);
     }
 
