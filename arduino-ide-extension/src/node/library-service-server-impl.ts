@@ -159,7 +159,7 @@ export class LibraryServiceImpl implements LibraryService {
 
     async install(options: { item: LibraryPackage, version?: Installable.Version, progressId?: string }): Promise<void> {
         await this.ready.promise;
-        const item = options.item;
+        const { item, progressId } = options;
         const version = !!options.version ? options.version : item.availableVersions[0];
         const coreClient = await this.coreClientProvider.client();
         if (!coreClient) {
@@ -179,7 +179,6 @@ export class LibraryServiceImpl implements LibraryService {
         let _url = '';
         resp.on('data', (r: LibraryInstallResp) => {
             const prog = r.getProgress();
-            let chunk: string | undefined;
             // Notes: the progress object is partial.
             // When the download starts, the first object is `{ "file": "name@version", "totalSize": 420, "url": "https://some.link" }`.
             // During the download the object is `{ "completed": false, "downloaded": 420 }`.
@@ -200,11 +199,10 @@ export class LibraryServiceImpl implements LibraryService {
                 // Finished
                 const completed = prog.getCompleted();
                 if (completed) {
-                    chunk = `Download ${_file} completed.\n`;
-                    if (options.progressId) {
+                    if (progressId) {
                         this.responseService.reportProgress({
-                            message: chunk,
-                            progressId: options.progressId,
+                            message: `Installing library: ${item.name}:${version}`,
+                            progressId,
                             work: {
                                 done: _totalSize,
                                 total: _totalSize
@@ -212,11 +210,10 @@ export class LibraryServiceImpl implements LibraryService {
                         });
                     }
                 } else if (_file && !downloaded) {
-                    chunk = `Downloading ${_file}${_url ? ` ${_url}` : ''}...\n`;
-                    if (options.progressId) {
+                    if (progressId) {
                         this.responseService.reportProgress({
-                            message: chunk,
-                            progressId: options.progressId,
+                            message: `Downloading library: ${item.name}`,
+                            progressId,
                             work: {
                                 done: 0,
                                 total: _totalSize
@@ -224,11 +221,10 @@ export class LibraryServiceImpl implements LibraryService {
                         });
                     }
                 } else if (downloaded > 0 && _totalSize > 0) {
-                    chunk = `Downloading ${_file} [${Math.floor(_totalSize / downloaded)}%]\n`;
-                    if (options.progressId) {
+                    if (progressId) {
                         this.responseService.reportProgress({
-                            message: chunk,
-                            progressId: options.progressId,
+                            message: `Installing library: ${item.name}:${version}`,
+                            progressId,
                             work: {
                                 done: downloaded,
                                 total: _totalSize
@@ -236,9 +232,6 @@ export class LibraryServiceImpl implements LibraryService {
                         });
                     }
                 }
-            }
-            if (chunk) {
-                this.responseService.appendToOutput({ name: 'library', chunk });
             }
         });
         await new Promise<void>((resolve, reject) => {

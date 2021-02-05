@@ -6,7 +6,7 @@ export interface OutputMessage {
 
 export interface ProgressMessage {
     readonly progressId: string;
-    readonly message: string;
+    readonly message?: string;
     readonly work?: { done: number, total: number };
 }
 

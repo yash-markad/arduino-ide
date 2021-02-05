@@ -86,7 +86,7 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
 
     protected async install(item: T, version: Installable.Version): Promise<void> {
         const { installable, searchable } = this.props;
-        await this.withProgress(item, async (progress, token) => {
+        await this.withProgress(async progress => {
             const progressId = progress.id;
             const toDispose = this.props.responseService.onProgressDidChange(progressMessage => {
                 if (progressId === progressMessage.progressId) {
@@ -102,13 +102,6 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
         });
         const items = await searchable.search({ query: this.state.filterText });
         this.setState({ items: this.sort(items) });
-        // const dialog = new InstallationProgressDialog(itemLabel(item), version);
-        // dialog.open();
-        // try {
-        //     await ;
-        // } finally {
-        //     dialog.close();
-        // }
     }
 
     protected async uninstall(item: T): Promise<void> {
@@ -133,14 +126,12 @@ export class FilterableListContainer<T extends ArduinoComponent> extends React.C
         }
     }
 
-    protected async withProgress(item: T, cb: (progress: Progress, token: CancellationToken) => Promise<void>): Promise<T> {
+    protected async withProgress(cb: (progress: Progress, token: CancellationToken) => Promise<void>): Promise<void> {
         const cancellationSource = new CancellationTokenSource();
         const { token } = cancellationSource;
-        const text = this.props.itemLabel(item);
-        const progress = await this.props.messageService.showProgress({ text, options: { cancelable: false } }, () => cancellationSource.cancel());
+        const progress = await this.props.messageService.showProgress({ text: '', options: { cancelable: false } }, () => cancellationSource.cancel());
         try {
             await cb(progress, token);
-            return item;
         } finally {
             progress.cancel();
         }
