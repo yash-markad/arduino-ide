@@ -284,6 +284,13 @@ export namespace BoardWithPackage {
         return !!board.packageId && !!board.packageName;
     }
 
+    export function sameAs(left: BoardWithPackage, right: BoardWithPackage): boolean {
+        if (left.packageId === right.packageId && left.packageName === right.packageName) {
+            return Board.sameAs(left, right);
+        }
+        return false;
+    }
+
 }
 
 export interface InstalledBoardWithPackage extends BoardWithPackage {

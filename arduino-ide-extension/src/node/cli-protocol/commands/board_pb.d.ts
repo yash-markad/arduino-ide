@@ -689,6 +689,12 @@ export class BoardListItem extends jspb.Message {
     setPid(value: string): BoardListItem;
 
 
+    hasPlatform(): boolean;
+    clearPlatform(): void;
+    getPlatform(): commands_common_pb.Platform | undefined;
+    setPlatform(value?: commands_common_pb.Platform): BoardListItem;
+
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): BoardListItem.AsObject;
     static toObject(includeInstance: boolean, msg: BoardListItem): BoardListItem.AsObject;
@@ -706,5 +712,6 @@ export namespace BoardListItem {
         isHidden: boolean,
         vid: string,
         pid: string,
+        platform?: commands_common_pb.Platform.AsObject,
     }
 }

@@ -5060,7 +5060,8 @@ proto.cc.arduino.cli.commands.BoardListItem.toObject = function(includeInstance,
     fqbn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     isHidden: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     vid: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    pid: jspb.Message.getFieldWithDefault(msg, 5, "")
+    pid: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    platform: (f = msg.getPlatform()) && commands_common_pb.Platform.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5116,6 +5117,11 @@ proto.cc.arduino.cli.commands.BoardListItem.deserializeBinaryFromReader = functi
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setPid(value);
+      break;
+    case 6:
+      var value = new commands_common_pb.Platform;
+      reader.readMessage(value,commands_common_pb.Platform.deserializeBinaryFromReader);
+      msg.setPlatform(value);
       break;
     default:
       reader.skipField();
@@ -5179,6 +5185,14 @@ proto.cc.arduino.cli.commands.BoardListItem.serializeBinaryToWriter = function(m
     writer.writeString(
       5,
       f
+    );
+  }
+  f = message.getPlatform();
+  if (f != null) {
+    writer.writeMessage(
+      6,
+      f,
+      commands_common_pb.Platform.serializeBinaryToWriter
     );
   }
 };
@@ -5271,6 +5285,43 @@ proto.cc.arduino.cli.commands.BoardListItem.prototype.getPid = function() {
  */
 proto.cc.arduino.cli.commands.BoardListItem.prototype.setPid = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional Platform platform = 6;
+ * @return {?proto.cc.arduino.cli.commands.Platform}
+ */
+proto.cc.arduino.cli.commands.BoardListItem.prototype.getPlatform = function() {
+  return /** @type{?proto.cc.arduino.cli.commands.Platform} */ (
+    jspb.Message.getWrapperField(this, commands_common_pb.Platform, 6));
+};
+
+
+/**
+ * @param {?proto.cc.arduino.cli.commands.Platform|undefined} value
+ * @return {!proto.cc.arduino.cli.commands.BoardListItem} returns this
+*/
+proto.cc.arduino.cli.commands.BoardListItem.prototype.setPlatform = function(value) {
+  return jspb.Message.setWrapperField(this, 6, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.cc.arduino.cli.commands.BoardListItem} returns this
+ */
+proto.cc.arduino.cli.commands.BoardListItem.prototype.clearPlatform = function() {
+  return this.setPlatform(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.cc.arduino.cli.commands.BoardListItem.prototype.hasPlatform = function() {
+  return jspb.Message.getField(this, 6) != null;
 };
 
 

@@ -108,9 +108,7 @@ export class BoardsConfig extends React.Component<BoardsConfig.Props, BoardsConf
     }
 
     protected updateBoards = (eventOrQuery: React.ChangeEvent<HTMLInputElement> | string = '') => {
-        const query = typeof eventOrQuery === 'string'
-            ? eventOrQuery
-            : eventOrQuery.target.value.toLowerCase();
+        const query = typeof eventOrQuery === 'string' ? eventOrQuery : eventOrQuery.target.value;
         this.setState({ query });
         this.queryBoards({ query }).then(searchResults => this.setState({ searchResults }));
     }

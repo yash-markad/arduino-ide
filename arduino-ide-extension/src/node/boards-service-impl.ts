@@ -8,11 +8,12 @@ import {
 } from '../common/protocol';
 import {
     PlatformSearchReq, PlatformSearchResp, PlatformInstallReq, PlatformInstallResp, PlatformListReq,
-    PlatformListResp, Platform, PlatformUninstallResp, PlatformUninstallReq
+    PlatformListResp, PlatformUninstallResp, PlatformUninstallReq
 } from './cli-protocol/commands/core_pb';
+import { Platform } from './cli-protocol/commands/common_pb';
 import { BoardDiscovery } from './board-discovery';
 import { CoreClientAware } from './core-client-provider';
-import { BoardDetailsReq, BoardDetailsResp } from './cli-protocol/commands/board_pb';
+import { BoardDetailsReq, BoardDetailsResp, BoardListAllReq } from './cli-protocol/commands/board_pb';
 import { ListProgrammersAvailableForUploadReq, ListProgrammersAvailableForUploadResp } from './cli-protocol/commands/upload_pb';
 
 @injectable()
@@ -141,13 +142,46 @@ export class BoardsServiceImpl extends CoreClientAware implements BoardsService 
             return undefined;
         }
         const packages = await this.search({});
-        return packages.find(({ boards }) => boards.some(({ fqbn }) => fqbn === expectedFqbn));
+        return packages.find(({ boards }) => boards.some(({ fqbn }) => fqbn === expectedFqbn)); // TODO: what about the manually installed packages?
     }
 
     async allBoards(options: {}): Promise<Array<BoardWithPackage>> {
-        const results = await this.search(options);
-        return results.map(item => item.boards.map(board => ({ ...board, packageName: item.name, packageId: item.id })))
+        const [coreSearchResults, manuallyInstalledBoards] = await Promise.all([
+            this.search(options),
+            new Promise<Array<BoardWithPackage>>(async (resolve, reject) => {
+                const { client, instance } = await this.coreClient();
+                const req = new BoardListAllReq();
+                req.setInstance(instance);
+                client.boardListAll(req, (error, resp) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    const boards: Array<BoardWithPackage> = [];
+                    for (const board of resp.getBoardsList()) {
+                        const platform = board.getPlatform();
+                        if (platform) {
+                            boards.push({
+                                name: board.getName(),
+                                fqbn: board.getFqbn(),
+                                packageId: platform.getId(),
+                                packageName: platform.getName()
+                            });
+                        }
+                    }
+                    resolve(boards);
+                });
+            })
+        ]);
+        const allBoards = coreSearchResults.map(item => item.boards.map(board => ({ ...board, packageName: item.name, packageId: item.id })))
             .reduce((acc, curr) => acc.concat(curr), []);
+
+        for (const board of allBoards) {
+            if (!manuallyInstalledBoards.some(other => BoardWithPackage.sameAs(other, board))) {
+                manuallyInstalledBoards.push(board);
+            }
+        }
+        return manuallyInstalledBoards;
     }
 
     async search(options: { query?: string }): Promise<BoardsPackage[]> {
