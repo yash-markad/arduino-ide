@@ -210,7 +210,7 @@ PID: ${PID}`;
     }
 
     protected async installedBoards(): Promise<InstalledBoardWithPackage[]> {
-        const allBoards = await this.boardsService.allBoards({});
+        const allBoards = await this.boardsService.searchBoard({});
         return allBoards.filter(InstalledBoardWithPackage.is);
     }
 
