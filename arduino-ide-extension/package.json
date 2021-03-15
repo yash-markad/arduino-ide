@@ -121,7 +121,11 @@
   ],
   "arduino": {
     "cli": {
-      "version": "20210317"
+      "version": {
+        "owner": "cmaglie",
+        "repo": "arduino-cli",
+        "commitish": "monitor-ratelimiting"
+      }
     }
   }
 }
