@@ -3,46 +3,57 @@ import { createPreferenceProxy, PreferenceProxy, PreferenceService, PreferenceCo
 import { CompilerWarningLiterals, CompilerWarnings } from '../common/protocol';
 
 export const ArduinoConfigSchema: PreferenceSchema = {
-    'type': 'object',
+    type: 'object',
     'properties': {
         'arduino.language.log': {
-            'type': 'boolean',
-            'description': "True if the Arduino Language Server should generate log files into the sketch folder. Otherwise, false. It's false by default.",
-            'default': false
+            type: 'boolean',
+            description: "True if the Arduino Language Server should generate log files into the sketch folder. Otherwise, false. It's false by default.",
+            default: false
         },
         'arduino.compile.verbose': {
-            'type': 'boolean',
-            'description': 'True for verbose compile output. False by default',
-            'default': false
+            type: 'boolean',
+            description: 'True for verbose compile output. False by default',
+            default: false
         },
         'arduino.compile.warnings': {
-            'enum': [...CompilerWarningLiterals],
-            'description': "Tells gcc which warning level to use. It's 'None' by default",
-            'default': 'None'
+            enum: [...CompilerWarningLiterals],
+            description: "Tells gcc which warning level to use. It's 'None' by default",
+            default: 'None'
         },
         'arduino.upload.verbose': {
-            'type': 'boolean',
-            'description': 'True for verbose upload output. False by default.',
-            'default': false
+            type: 'boolean',
+            description: 'True for verbose upload output. False by default.',
+            default: false
         },
         'arduino.upload.verify': {
-            'type': 'boolean',
-            'default': false
+            type: 'boolean',
+            default: false
         },
         'arduino.window.autoScale': {
-            'type': 'boolean',
-            'description': 'True if the user interface automatically scales with the font size.',
-            'default': true
+            type: 'boolean',
+            description: 'True if the user interface automatically scales with the font size.',
+            default: true
         },
         'arduino.window.zoomLevel': {
-            'type': 'number',
-            'description': 'Adjust the zoom level of the window. The original size is 0 and each increment above (e.g. 1) or below (e.g. -1) represents zooming 20% larger or smaller. You can also enter decimals to adjust the zoom level with a finer granularity.',
-            'default': 0
+            type: 'number',
+            description: 'Adjust the zoom level of the window. The original size is 0 and each increment above (e.g. 1) or below (e.g. -1) represents zooming 20% larger or smaller. You can also enter decimals to adjust the zoom level with a finer granularity.',
+            default: 0
         },
         'arduino.ide.autoUpdate': {
-            'type': 'boolean',
-            'description': 'True to enable automatic update checks. The IDE will check for updates automatically and periodically.',
-            'default': true
+            type: 'boolean',
+            description: 'True to enable automatic update checks. The IDE will check for updates automatically and periodically.',
+            default: true
+        },
+        'arduino.monitor.maxOutputLines': {
+            type: 'number',
+            description: 'Maximum number of lines count in the Monitor view. Defaults to 5000.',
+            default: 5000
+        },
+        'arduino.monitor.rateLimiterBuffer': {
+            type: 'number',
+            minimum: 0,
+            description: 'This parameter indicates how many bytes should be buffered on the CLI before dropping. If >0 then the CLI will enable a rate limiter and will send incoming data to the IDE only when the IDE allows it. Defaults to 10 KB',
+            default: 10_240
         }
     }
 };
@@ -56,6 +67,8 @@ export interface ArduinoConfiguration {
     'arduino.window.autoScale': boolean;
     'arduino.window.zoomLevel': number;
     'arduino.ide.autoUpdate': boolean;
+    'arduino.monitor.maxOutputLines': number;
+    'arduino.monitor.rateLimiterBuffer': number;
 }
 
 export const ArduinoPreferences = Symbol('ArduinoPreferences');

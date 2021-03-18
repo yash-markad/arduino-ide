@@ -1,18 +1,22 @@
 import * as React from 'react';
 import * as dateFormat from 'dateformat';
 import { postConstruct, injectable, inject } from 'inversify';
+import { v4 } from 'uuid';
 import { OptionsType } from 'react-select/src/types';
 import { isOSX } from '@theia/core/lib/common/os';
 import { Event, Emitter } from '@theia/core/lib/common/event';
 import { Key, KeyCode } from '@theia/core/lib/browser/keys';
 import { DisposableCollection, Disposable } from '@theia/core/lib/common/disposable'
-import { ReactWidget, Message, Widget, MessageLoop } from '@theia/core/lib/browser/widgets';
+import { ReactWidget, Message, Widget, MessageLoop, Title } from '@theia/core/lib/browser/widgets';
+import { TabBarDecorator } from '@theia/core/lib/browser/shell/tab-bar-decorator';
+import { WidgetDecoration } from '@theia/core/lib/browser/widget-decoration';
 import { Board, Port } from '../../common/protocol/boards-service';
 import { MonitorConfig } from '../../common/protocol/monitor-service';
 import { ArduinoSelect } from '../widgets/arduino-select';
 import { MonitorModel } from './monitor-model';
 import { MonitorConnection } from './monitor-connection';
 import { MonitorServiceClientImpl } from './monitor-service-client-impl';
+import { ArduinoPreferences } from '../arduino-preferences';
 
 @injectable()
 export class MonitorWidget extends ReactWidget {
@@ -27,6 +31,9 @@ export class MonitorWidget extends ReactWidget {
 
     @inject(MonitorServiceClientImpl)
     protected readonly monitorServiceClient: MonitorServiceClientImpl;
+
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
 
     protected widgetHeight: number;
 
@@ -169,7 +176,8 @@ export class MonitorWidget extends ReactWidget {
                 <SerialMonitorOutput
                     monitorModel={this.monitorModel}
                     monitorConnection={this.monitorConnection}
-                    clearConsoleEvent={this.clearOutputEmitter.event} />
+                    clearConsoleEvent={this.clearOutputEmitter.event}
+                    preferences={this.preferences} />
             </div>
         </div>;
     }
@@ -262,10 +270,12 @@ export namespace SerialMonitorOutput {
         readonly monitorModel: MonitorModel;
         readonly monitorConnection: MonitorConnection;
         readonly clearConsoleEvent: Event<void>;
+        readonly preferences: ArduinoPreferences;
     }
     export interface State {
-        content: string;
         timestamp: boolean;
+        lines: JSX.Element[];
+        lastLine: string;
     }
 }
 
@@ -276,16 +286,19 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
      */
     protected anchor: HTMLElement | null;
     protected toDisposeBeforeUnmount = new DisposableCollection();
+    protected maxLineCount: number;
 
     constructor(props: Readonly<SerialMonitorOutput.Props>) {
         super(props);
-        this.state = { content: '', timestamp: this.props.monitorModel.timestamp };
+        this.state = { lastLine: '', lines: [], timestamp: this.props.monitorModel.timestamp };
+        this.maxLineCount = props.preferences['arduino.monitor.maxOutputLines'] || 5000;
     }
 
     render(): React.ReactNode {
         return <React.Fragment>
             <div style={({ whiteSpace: 'pre', fontFamily: 'monospace' })}>
-                {this.state.content}
+                {this.state.lines}
+                {this.state.lastLine}
             </div>
             <div style={{ float: 'left', clear: 'both' }} ref={element => { this.anchor = element; }} />
         </React.Fragment>;
@@ -294,21 +307,14 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
     componentDidMount(): void {
         this.scrollToBottom();
         this.toDisposeBeforeUnmount.pushAll([
-            this.props.monitorConnection.onRead(({ message }) => {
-                const rawLines = message.split('\n');
-                const lines: string[] = []
-                const timestamp = () => this.state.timestamp ? `${dateFormat(new Date(), 'H:M:ss.l')} -> ` : '';
-                for (let i = 0; i < rawLines.length; i++) {
-                    if (i === 0 && this.state.content.length !== 0) {
-                        lines.push(rawLines[i]);
-                    } else {
-                        lines.push(timestamp() + rawLines[i]);
-                    }
+            this.props.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+                if (preferenceName === 'arduino.monitor.maxOutputLines' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                    this.maxLineCount = newValue;
+                    this.onMessageDidRead({ message: '' });
                 }
-                const content = this.state.content + lines.join('\n');
-                this.setState({ content });
             }),
-            this.props.clearConsoleEvent(() => this.setState({ content: '' })),
+            this.props.monitorConnection.onRead(this.onMessageDidRead.bind(this)),
+            this.props.clearConsoleEvent(() => this.setState({ lines: [], lastLine: '' })),
             this.props.monitorModel.onChange(({ property }) => {
                 if (property === 'timestamp') {
                     const { timestamp } = this.props.monitorModel;
@@ -316,6 +322,31 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
                 }
             })
         ]);
+    }
+
+    private onMessageDidRead({ message, dropped }: { message: string, dropped?: number }): void {
+        const rawLines = message.split('\n');
+        const lines: string[] = []
+        let lastLine = this.state.lastLine;
+        const timestamp = () => this.state.timestamp ? `${dateFormat(new Date(), 'H:M:ss.l')} -> ` : '';
+        for (let i = 0; i < rawLines.length; i++) {
+            if (i === 0 && lastLine) {
+                lines.push(`${lastLine}${rawLines[i]}`);
+                lastLine = '';
+            } else {
+                lines.push(timestamp() + rawLines[i]);
+            }
+        }
+        lastLine = lines.pop() || '';
+        if (dropped) {
+            lastLine = `${lastLine}[DROPPED]\n`;
+        }
+        const jsxLines = this.maxLineCount <= 1 ? [] : this.state.lines.concat(lines.map(line => <div key={v4()}>{line}</div>)).slice((this.maxLineCount - 1) * -1);
+        this.setState({ lines: jsxLines, lastLine }, () => {
+            if (this.props.monitorConnection.connected) {
+                setTimeout(() => window.requestAnimationFrame(() => this.props.monitorConnection.signalAck()), 0);
+            }
+        });
     }
 
     componentDidUpdate(): void {
@@ -338,4 +369,84 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
 export interface SelectOption<T> {
     readonly label: string;
     readonly value: T;
+}
+
+@injectable()
+export class MonitorWidgetTabBarDecorator implements TabBarDecorator {
+
+    @inject(MonitorConnection)
+    protected readonly connection: MonitorConnection;
+
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
+
+    protected readonly onDidChangeDecorationsEmitter = new Emitter<void>();
+    protected readonly maxHistory = 10;
+
+    protected rateLimiterBuffer: number;
+    protected history: number[] = [];
+    protected decoration: WidgetDecoration.Data = {};
+
+    @postConstruct()
+    protected init(): void {
+        this.rateLimiterBuffer = this.preferences['arduino.monitor.rateLimiterBuffer'];
+        this.connection.onRead(({ dropped }) => {
+            this.history.push(Math.floor(dropped / this.rateLimiterBuffer) * 100);
+            this.history = this.history.slice(this.maxHistory * -1);
+            this.refresh();
+        });
+        this.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+            if (preferenceName === 'arduino.monitor.rateLimiterBuffer' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                this.rateLimiterBuffer = newValue;
+                this.history = [];
+                this.refresh();
+            }
+        });
+    }
+
+    decorate(title: Title<Widget>): WidgetDecoration.Data[] {
+        if (this.decoration && title.owner.id === MonitorWidget.ID) {
+            return [
+                this.decoration
+            ];
+        }
+        return [];
+    }
+
+    private refresh(): void {
+        const percentage = Math.floor(this.history.reduce((prev, curr) => prev + curr, 0) / this.maxHistory);
+        let newDecoration: WidgetDecoration.Data;
+        if (!percentage) {
+            newDecoration = {
+            }
+        } else if (percentage < 25) {
+            newDecoration = {
+                badge: `${percentage}%` as any
+            }
+        } else if (percentage < 75) {
+            newDecoration = {
+                badge: `${percentage}%` as any,
+                backgroundColor: 'var(--theia-editorWarning-foreground)'
+            }
+        } else {
+            newDecoration = {
+                badge: `${percentage}%` as any,
+                backgroundColor: 'var(--theia-errorForeground)'
+            }
+        }
+        const didChange = newDecoration.badge !== this.decoration.badge || newDecoration.backgroundColor !== this.decoration.backgroundColor;
+        this.decoration = newDecoration;
+        if (didChange) {
+            this.onDidChangeDecorationsEmitter.fire();
+        }
+    }
+
+    get id(): string {
+        return 'monitor-widget-tabbar-decorator';
+    }
+
+    get onDidChangeDecorations(): Event<void> {
+        return this.onDidChangeDecorationsEmitter.event;
+    }
+
 }

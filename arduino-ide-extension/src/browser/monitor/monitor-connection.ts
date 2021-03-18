@@ -3,13 +3,14 @@ import { deepClone } from '@theia/core/lib/common/objects';
 import { Emitter, Event } from '@theia/core/lib/common/event';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { FrontendApplicationStateService } from '@theia/core/lib/browser/frontend-application-state';
-import { MonitorService, MonitorConfig, MonitorError, Status } from '../../common/protocol/monitor-service';
+import { MonitorService, MonitorConfig, MonitorError, Status, MonitorRead } from '../../common/protocol/monitor-service';
 import { BoardsServiceProvider } from '../boards/boards-service-provider';
 import { Port, Board, BoardsService, AttachedBoardsChangeEvent } from '../../common/protocol/boards-service';
 import { MonitorServiceClientImpl } from './monitor-service-client-impl';
 import { BoardsConfig } from '../boards/boards-config';
 import { MonitorModel } from './monitor-model';
 import { NotificationCenter } from '../notification-center';
+import { ArduinoPreferences } from '../arduino-preferences';
 
 @injectable()
 export class MonitorConnection {
@@ -38,6 +39,9 @@ export class MonitorConnection {
     @inject(FrontendApplicationStateService)
     protected readonly applicationState: FrontendApplicationStateService;
 
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
+
     protected state: MonitorConnection.State | undefined;
     /**
      * Note: The idea is to toggle this property from the UI (`Monitor` view)
@@ -48,7 +52,7 @@ export class MonitorConnection {
     /**
      * This emitter forwards all read events **iff** the connection is established.
      */
-    protected readonly onReadEmitter = new Emitter<{ message: string }>();
+    protected readonly onReadEmitter = new Emitter<MonitorRead>();
 
     /**
      * Array for storing previous monitor errors received from the server, and based on the number of elements in this array,
@@ -57,9 +61,24 @@ export class MonitorConnection {
      */
     protected monitorErrors: MonitorError[] = [];
     protected reconnectTimeout?: number;
+    protected maxRateLimiterBuffer: number;
 
     @postConstruct()
     protected init(): void {
+        this.maxRateLimiterBuffer = this.preferences['arduino.monitor.rateLimiterBuffer'];
+        this.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+            if (preferenceName === 'arduino.monitor.rateLimiterBuffer' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                this.maxRateLimiterBuffer = newValue;
+                if (this.connected && this.state) {
+                    this.connect(this.state.config);
+                }
+            }
+        });
+        this.monitorServiceClient.onRead(event => {
+            if (this.connected) {
+                this.onReadEmitter.fire(event);
+            }
+        });
         this.monitorServiceClient.onError(async error => {
             let shouldReconnect = false;
             if (this.state) {
@@ -170,18 +189,13 @@ export class MonitorConnection {
                 return disconnectStatus;
             }
         }
+        if (typeof config.rateLimiterBuffer !== 'number') {
+            config = Object.assign(config, { rateLimiterBuffer: this.maxRateLimiterBuffer });
+        }
         console.info(`>>> Creating serial monitor connection for ${Board.toString(config.board)} on port ${Port.toString(config.port)}...`);
         const connectStatus = await this.monitorService.connect(config);
+        this.monitorService.ack(1);
         if (Status.isOK(connectStatus)) {
-            const requestMessage = () => {
-                this.monitorService.request().then(({ message }) => {
-                    if (this.connected) {
-                        this.onReadEmitter.fire({ message });
-                        requestMessage();
-                    }
-                });
-            }
-            requestMessage();
             this.state = { config };
             console.info(`<<< Serial monitor connection created for ${Board.toString(config.board, { useFqbn: false })} on port ${Port.toString(config.port)}.`);
         }
@@ -224,11 +238,17 @@ export class MonitorConnection {
         });
     }
 
+    signalAck(): void {
+        if (this.connected) {
+            this.monitorService.ack(1);
+        }
+    }
+
     get onConnectionChanged(): Event<MonitorConnection.State | undefined> {
         return this.onConnectionChangedEmitter.event;
     }
 
-    get onRead(): Event<{ message: string }> {
+    get onRead(): Event<MonitorRead> {
         return this.onReadEmitter.event;
     }
 

@@ -21,7 +21,7 @@ export interface MonitorService extends JsonRpcServer<MonitorServiceClient> {
     connect(config: MonitorConfig): Promise<Status>;
     disconnect(): Promise<Status>;
     send(message: string): Promise<Status>;
-    request(): Promise<{ message: string }>;
+    ack(received: number): void;
 }
 
 export interface MonitorConfig {
@@ -35,7 +35,10 @@ export interface MonitorConfig {
      * Defaults to `9600`.
      */
     readonly baudRate?: MonitorConfig.BaudRate;
-
+    /**
+     * Rate-limiter buffer size (in bytes) for the serial-monitor. If not specified, there is no rate-limiter on the CLI.
+     */
+    readonly rateLimiterBuffer?: number;
 }
 export namespace MonitorConfig {
 
@@ -52,7 +55,12 @@ export namespace MonitorConfig {
 
 export const MonitorServiceClient = Symbol('MonitorServiceClient');
 export interface MonitorServiceClient {
+    notifyRead(event: MonitorRead): void;
     notifyError(event: MonitorError): void;
+}
+export interface MonitorRead {
+    readonly message: string;
+    readonly dropped: number;
 }
 
 export interface MonitorError {
