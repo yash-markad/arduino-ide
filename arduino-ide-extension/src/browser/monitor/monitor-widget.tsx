@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as dateFormat from 'dateformat';
 import { postConstruct, injectable, inject } from 'inversify';
+import { v4 } from 'uuid';
 import { OptionsType } from 'react-select/src/types';
 import { isOSX } from '@theia/core/lib/common/os';
 import { Event, Emitter } from '@theia/core/lib/common/event';
@@ -13,6 +14,7 @@ import { ArduinoSelect } from '../widgets/arduino-select';
 import { MonitorModel } from './monitor-model';
 import { MonitorConnection } from './monitor-connection';
 import { MonitorServiceClientImpl } from './monitor-service-client-impl';
+import { ArduinoPreferences } from '../arduino-preferences';
 
 @injectable()
 export class MonitorWidget extends ReactWidget {
@@ -27,6 +29,9 @@ export class MonitorWidget extends ReactWidget {
 
     @inject(MonitorServiceClientImpl)
     protected readonly monitorServiceClient: MonitorServiceClientImpl;
+
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
 
     protected widgetHeight: number;
 
@@ -169,7 +174,8 @@ export class MonitorWidget extends ReactWidget {
                 <SerialMonitorOutput
                     monitorModel={this.monitorModel}
                     monitorConnection={this.monitorConnection}
-                    clearConsoleEvent={this.clearOutputEmitter.event} />
+                    clearConsoleEvent={this.clearOutputEmitter.event}
+                    preferences={this.preferences} />
             </div>
         </div>;
     }
@@ -262,6 +268,7 @@ export namespace SerialMonitorOutput {
         readonly monitorModel: MonitorModel;
         readonly monitorConnection: MonitorConnection;
         readonly clearConsoleEvent: Event<void>;
+        readonly preferences: ArduinoPreferences;
     }
     export interface State {
         timestamp: boolean;
@@ -277,10 +284,12 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
      */
     protected anchor: HTMLElement | null;
     protected toDisposeBeforeUnmount = new DisposableCollection();
+    protected maxLineCount: number;
 
     constructor(props: Readonly<SerialMonitorOutput.Props>) {
         super(props);
         this.state = { lastLine: '', lines: [], timestamp: this.props.monitorModel.timestamp };
+        this.maxLineCount = props.preferences['arduino.monitor.maxOutputLines'] || 5000;
     }
 
     render(): React.ReactNode {
@@ -296,24 +305,13 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
     componentDidMount(): void {
         this.scrollToBottom();
         this.toDisposeBeforeUnmount.pushAll([
-            this.props.monitorConnection.onRead(({ message }) => {
-                const rawLines = message.split('\n');
-                const lines: string[] = []
-                let lastLine = this.state.lastLine;
-                const timestamp = () => this.state.timestamp ? `${dateFormat(new Date(), 'H:M:ss.l')} -> ` : '';
-                for (let i = 0; i < rawLines.length; i++) {
-                    if (i === 0 && lastLine) {
-                        lines.push(`${lastLine}${rawLines[i]}`);
-                        lastLine = '';
-                    } else {
-                        lines.push(timestamp() + rawLines[i]);
-                    }
+            this.props.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+                if (preferenceName === 'arduino.monitor.maxOutputLines' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                    this.maxLineCount = newValue;
+                    this.onMessageDidRead({ message: '' });
                 }
-                if (lines.length > 1) {
-                    lastLine = lines.pop() || '';
-                }
-                this.setState({ lines: this.state.lines.concat(lines.map(line => <div>{line}</div>)).slice(-3_000), lastLine });
             }),
+            this.props.monitorConnection.onRead(this.onMessageDidRead.bind(this)),
             this.props.clearConsoleEvent(() => this.setState({ lines: [], lastLine: '' })),
             this.props.monitorModel.onChange(({ property }) => {
                 if (property === 'timestamp') {
@@ -322,6 +320,28 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
                 }
             })
         ]);
+    }
+
+    private onMessageDidRead({ message }: { message: string }): void {
+        const rawLines = message.split('\n');
+        const lines: string[] = []
+        let lastLine = this.state.lastLine;
+        const timestamp = () => this.state.timestamp ? `${dateFormat(new Date(), 'H:M:ss.l')} -> ` : '';
+        for (let i = 0; i < rawLines.length; i++) {
+            if (i === 0 && lastLine) {
+                lines.push(`${lastLine}${rawLines[i]}`);
+                lastLine = '';
+            } else {
+                lines.push(timestamp() + rawLines[i]);
+            }
+        }
+        lastLine = lines.pop() || '';
+        const jsxLines = this.maxLineCount <= 1 ? [] : this.state.lines.concat(lines.map(line => <div key={v4()}>{line}</div>)).slice((this.maxLineCount - 1) * -1);
+        this.setState({ lines: jsxLines, lastLine }, () => {
+            if (this.props.monitorConnection.connected) {
+                setTimeout(() => window.requestAnimationFrame(() => this.props.monitorConnection.signalAck()), 0);
+            }
+        });
     }
 
     componentDidUpdate(): void {

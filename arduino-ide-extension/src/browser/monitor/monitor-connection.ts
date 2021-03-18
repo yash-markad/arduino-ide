@@ -10,6 +10,7 @@ import { MonitorServiceClientImpl } from './monitor-service-client-impl';
 import { BoardsConfig } from '../boards/boards-config';
 import { MonitorModel } from './monitor-model';
 import { NotificationCenter } from '../notification-center';
+import { ArduinoPreferences } from '../arduino-preferences';
 
 @injectable()
 export class MonitorConnection {
@@ -38,6 +39,9 @@ export class MonitorConnection {
     @inject(FrontendApplicationStateService)
     protected readonly applicationState: FrontendApplicationStateService;
 
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
+
     protected state: MonitorConnection.State | undefined;
     /**
      * Note: The idea is to toggle this property from the UI (`Monitor` view)
@@ -57,14 +61,22 @@ export class MonitorConnection {
      */
     protected monitorErrors: MonitorError[] = [];
     protected reconnectTimeout?: number;
-    protected maxRateLimiterBuffer = 10_240;
+    protected maxRateLimiterBuffer: number;
 
     @postConstruct()
     protected init(): void {
+        this.maxRateLimiterBuffer = (this.preferences['arduino.monitor.rateLimiterBuffer'] || 10) * 1024;
+        this.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+            if (preferenceName === 'arduino.monitor.rateLimiterBuffer' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                this.maxRateLimiterBuffer = newValue * 1024;
+                if (this.connected && this.state) {
+                    this.connect(this.state.config);
+                }
+            }
+        });
         this.monitorServiceClient.onRead(event => {
             if (this.connected) {
                 this.onReadEmitter.fire(event);
-                this.monitorService.ack(new Blob([event.message]).size);
             }
         });
         this.monitorServiceClient.onError(async error => {
@@ -224,6 +236,12 @@ export class MonitorConnection {
             this.monitorService.send(data + this.monitorModel.lineEnding)
                 .then(() => resolve(Status.OK));
         });
+    }
+
+    signalAck(): void {
+        if (this.connected) {
+            this.monitorService.ack(1);
+        }
     }
 
     get onConnectionChanged(): Event<MonitorConnection.State | undefined> {
