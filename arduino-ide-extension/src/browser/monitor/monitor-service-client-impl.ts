@@ -16,7 +16,6 @@ export class MonitorServiceClientImpl implements MonitorServiceClient {
 
     notifyRead({ message }: { message: string }): void {
         this.onReadEmitter.fire({ message });
-        console.debug(`Received message: ${message}`);
     }
 
 }

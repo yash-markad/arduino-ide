@@ -86,10 +86,11 @@ export class MonitorServiceImpl implements MonitorService {
         }).bind(this));
 
         duplex.on('data', ((resp: StreamingOpenResp) => {
-            const raw = resp.getData();
-            const message = typeof raw === 'string' ? raw : new TextDecoder('utf8').decode(raw);
             if (this.client) {
-                this.client.notifyRead({ message });
+                const raw = resp.getData();
+                const message = typeof raw === 'string' ? raw : new TextDecoder('utf8').decode(raw);
+                const dropped = resp.getDropped();
+                this.client.notifyRead({ message, dropped });
             }
         }).bind(this));
 

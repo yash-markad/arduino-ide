@@ -55,8 +55,12 @@ export namespace MonitorConfig {
 
 export const MonitorServiceClient = Symbol('MonitorServiceClient');
 export interface MonitorServiceClient {
-    notifyRead({ message }: { message: string }): void;
+    notifyRead(event: MonitorRead): void;
     notifyError(event: MonitorError): void;
+}
+export interface MonitorRead {
+    readonly message: string;
+    readonly dropped: number;
 }
 
 export interface MonitorError {
