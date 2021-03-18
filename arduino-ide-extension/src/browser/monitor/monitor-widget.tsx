@@ -264,8 +264,9 @@ export namespace SerialMonitorOutput {
         readonly clearConsoleEvent: Event<void>;
     }
     export interface State {
-        content: string;
         timestamp: boolean;
+        lines: JSX.Element[];
+        lastLine: string;
     }
 }
 
@@ -279,13 +280,14 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
 
     constructor(props: Readonly<SerialMonitorOutput.Props>) {
         super(props);
-        this.state = { content: '', timestamp: this.props.monitorModel.timestamp };
+        this.state = { lastLine: '', lines: [], timestamp: this.props.monitorModel.timestamp };
     }
 
     render(): React.ReactNode {
         return <React.Fragment>
             <div style={({ whiteSpace: 'pre', fontFamily: 'monospace' })}>
-                {this.state.content}
+                {this.state.lines}
+                {this.state.lastLine}
             </div>
             <div style={{ float: 'left', clear: 'both' }} ref={element => { this.anchor = element; }} />
         </React.Fragment>;
@@ -297,18 +299,22 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
             this.props.monitorConnection.onRead(({ message }) => {
                 const rawLines = message.split('\n');
                 const lines: string[] = []
+                let lastLine = this.state.lastLine;
                 const timestamp = () => this.state.timestamp ? `${dateFormat(new Date(), 'H:M:ss.l')} -> ` : '';
                 for (let i = 0; i < rawLines.length; i++) {
-                    if (i === 0 && this.state.content.length !== 0) {
-                        lines.push(rawLines[i]);
+                    if (i === 0 && lastLine) {
+                        lines.push(`${lastLine}${rawLines[i]}`);
+                        lastLine = '';
                     } else {
                         lines.push(timestamp() + rawLines[i]);
                     }
                 }
-                const content = this.state.content + lines.join('\n');
-                this.setState({ content });
+                if (lines.length > 1) {
+                    lastLine = lines.pop() || '';
+                }
+                this.setState({ lines: this.state.lines.concat(lines.map(line => <div>{line}</div>)).slice(-3_000), lastLine });
             }),
-            this.props.clearConsoleEvent(() => this.setState({ content: '' })),
+            this.props.clearConsoleEvent(() => this.setState({ lines: [], lastLine: '' })),
             this.props.monitorModel.onChange(({ property }) => {
                 if (property === 'timestamp') {
                     const { timestamp } = this.props.monitorModel;

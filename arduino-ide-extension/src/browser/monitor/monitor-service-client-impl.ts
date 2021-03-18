@@ -5,11 +5,18 @@ import { MonitorServiceClient, MonitorError } from '../../common/protocol/monito
 @injectable()
 export class MonitorServiceClientImpl implements MonitorServiceClient {
 
+    protected readonly onReadEmitter = new Emitter<{ message: string }>();
     protected readonly onErrorEmitter = new Emitter<MonitorError>();
     readonly onError = this.onErrorEmitter.event;
+    readonly onRead = this.onReadEmitter.event;
 
     notifyError(error: MonitorError): void {
         this.onErrorEmitter.fire(error);
+    }
+
+    notifyRead({ message }: { message: string }): void {
+        this.onReadEmitter.fire({ message });
+        console.debug(`Received message: ${message}`);
     }
 
 }

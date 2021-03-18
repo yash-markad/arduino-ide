@@ -57,9 +57,16 @@ export class MonitorConnection {
      */
     protected monitorErrors: MonitorError[] = [];
     protected reconnectTimeout?: number;
+    protected maxRateLimiterBuffer = 10_240;
 
     @postConstruct()
     protected init(): void {
+        this.monitorServiceClient.onRead(event => {
+            if (this.connected) {
+                this.onReadEmitter.fire(event);
+                this.monitorService.ack(new Blob([event.message]).size);
+            }
+        });
         this.monitorServiceClient.onError(async error => {
             let shouldReconnect = false;
             if (this.state) {
@@ -170,18 +177,13 @@ export class MonitorConnection {
                 return disconnectStatus;
             }
         }
+        if (typeof config.rateLimiterBuffer !== 'number') {
+            config = Object.assign(config, { rateLimiterBuffer: this.maxRateLimiterBuffer });
+        }
         console.info(`>>> Creating serial monitor connection for ${Board.toString(config.board)} on port ${Port.toString(config.port)}...`);
         const connectStatus = await this.monitorService.connect(config);
+        this.monitorService.ack(1);
         if (Status.isOK(connectStatus)) {
-            const requestMessage = () => {
-                this.monitorService.request().then(({ message }) => {
-                    if (this.connected) {
-                        this.onReadEmitter.fire({ message });
-                        requestMessage();
-                    }
-                });
-            }
-            requestMessage();
             this.state = { config };
             console.info(`<<< Serial monitor connection created for ${Board.toString(config.board, { useFqbn: false })} on port ${Port.toString(config.port)}.`);
         }
