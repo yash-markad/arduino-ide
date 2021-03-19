@@ -52,11 +52,11 @@ import { LibraryListWidgetFrontendContribution } from './library/library-widget-
 import { MonitorServiceClientImpl } from './monitor/monitor-service-client-impl';
 import { MonitorServicePath, MonitorService, MonitorServiceClient } from '../common/protocol/monitor-service';
 import { ConfigService, ConfigServicePath } from '../common/protocol/config-service';
-import { MonitorWidget } from './monitor/monitor-widget';
+import { MonitorWidget, MonitorWidgetTabBarDecorator } from './monitor/monitor-widget';
 import { MonitorViewContribution } from './monitor/monitor-view-contribution';
 import { MonitorConnection } from './monitor/monitor-connection';
 import { MonitorModel } from './monitor/monitor-model';
-import { TabBarDecoratorService as TheiaTabBarDecoratorService } from '@theia/core/lib/browser/shell/tab-bar-decorator';
+import { TabBarDecorator, TabBarDecoratorService as TheiaTabBarDecoratorService } from '@theia/core/lib/browser/shell/tab-bar-decorator';
 import { TabBarDecoratorService } from './theia/core/tab-bar-decorator';
 import { ProblemManager as TheiaProblemManager } from '@theia/markers/lib/browser';
 import { ProblemManager } from './theia/markers/problem-manager';
@@ -264,6 +264,8 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
         WebSocketConnectionProvider.createProxy(context.container, MonitorServicePath, client);
         return client;
     }).inSingletonScope();
+    bind(MonitorWidgetTabBarDecorator).toSelf().inSingletonScope();
+    bind(TabBarDecorator).toService(MonitorWidgetTabBarDecorator);
 
     bind(WorkspaceService).toSelf().inSingletonScope();
     rebind(TheiaWorkspaceService).toService(WorkspaceService);

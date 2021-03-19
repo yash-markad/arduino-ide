@@ -1,11 +1,11 @@
 import { injectable } from 'inversify';
 import { Emitter } from '@theia/core/lib/common/event';
-import { MonitorServiceClient, MonitorError } from '../../common/protocol/monitor-service';
+import { MonitorServiceClient, MonitorError, MonitorRead } from '../../common/protocol/monitor-service';
 
 @injectable()
 export class MonitorServiceClientImpl implements MonitorServiceClient {
 
-    protected readonly onReadEmitter = new Emitter<{ message: string }>();
+    protected readonly onReadEmitter = new Emitter<MonitorRead>();
     protected readonly onErrorEmitter = new Emitter<MonitorError>();
     readonly onError = this.onErrorEmitter.event;
     readonly onRead = this.onReadEmitter.event;
@@ -14,8 +14,8 @@ export class MonitorServiceClientImpl implements MonitorServiceClient {
         this.onErrorEmitter.fire(error);
     }
 
-    notifyRead({ message }: { message: string }): void {
-        this.onReadEmitter.fire({ message });
+    notifyRead(event: MonitorRead): void {
+        this.onReadEmitter.fire(event);
     }
 
 }

@@ -136,12 +136,11 @@ export class MonitorServiceImpl implements MonitorService {
     }
 
     ack(received: number): void {
-        if (!this.connection) {
-            throw new Error('Not connected');
+        if (this.connection) {
+            const req = new StreamingOpenReq();
+            req.setRecvAcknowledge(received);
+            this.connection.duplex.write(req);
         }
-        const req = new StreamingOpenReq();
-        req.setRecvAcknowledge(received);
-        this.connection.duplex.write(req);
     }
 
     async send(message: string): Promise<Status> {

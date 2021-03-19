@@ -3,7 +3,7 @@ import { deepClone } from '@theia/core/lib/common/objects';
 import { Emitter, Event } from '@theia/core/lib/common/event';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { FrontendApplicationStateService } from '@theia/core/lib/browser/frontend-application-state';
-import { MonitorService, MonitorConfig, MonitorError, Status } from '../../common/protocol/monitor-service';
+import { MonitorService, MonitorConfig, MonitorError, Status, MonitorRead } from '../../common/protocol/monitor-service';
 import { BoardsServiceProvider } from '../boards/boards-service-provider';
 import { Port, Board, BoardsService, AttachedBoardsChangeEvent } from '../../common/protocol/boards-service';
 import { MonitorServiceClientImpl } from './monitor-service-client-impl';
@@ -52,7 +52,7 @@ export class MonitorConnection {
     /**
      * This emitter forwards all read events **iff** the connection is established.
      */
-    protected readonly onReadEmitter = new Emitter<{ message: string }>();
+    protected readonly onReadEmitter = new Emitter<MonitorRead>();
 
     /**
      * Array for storing previous monitor errors received from the server, and based on the number of elements in this array,
@@ -65,10 +65,10 @@ export class MonitorConnection {
 
     @postConstruct()
     protected init(): void {
-        this.maxRateLimiterBuffer = (this.preferences['arduino.monitor.rateLimiterBuffer'] || 10) * 1024;
+        this.maxRateLimiterBuffer = this.preferences['arduino.monitor.rateLimiterBuffer'];
         this.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
             if (preferenceName === 'arduino.monitor.rateLimiterBuffer' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
-                this.maxRateLimiterBuffer = newValue * 1024;
+                this.maxRateLimiterBuffer = newValue;
                 if (this.connected && this.state) {
                     this.connect(this.state.config);
                 }
@@ -248,7 +248,7 @@ export class MonitorConnection {
         return this.onConnectionChangedEmitter.event;
     }
 
-    get onRead(): Event<{ message: string }> {
+    get onRead(): Event<MonitorRead> {
         return this.onReadEmitter.event;
     }
 

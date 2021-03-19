@@ -7,7 +7,9 @@ import { isOSX } from '@theia/core/lib/common/os';
 import { Event, Emitter } from '@theia/core/lib/common/event';
 import { Key, KeyCode } from '@theia/core/lib/browser/keys';
 import { DisposableCollection, Disposable } from '@theia/core/lib/common/disposable'
-import { ReactWidget, Message, Widget, MessageLoop } from '@theia/core/lib/browser/widgets';
+import { ReactWidget, Message, Widget, MessageLoop, Title } from '@theia/core/lib/browser/widgets';
+import { TabBarDecorator } from '@theia/core/lib/browser/shell/tab-bar-decorator';
+import { WidgetDecoration } from '@theia/core/lib/browser/widget-decoration';
 import { Board, Port } from '../../common/protocol/boards-service';
 import { MonitorConfig } from '../../common/protocol/monitor-service';
 import { ArduinoSelect } from '../widgets/arduino-select';
@@ -322,7 +324,7 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
         ]);
     }
 
-    private onMessageDidRead({ message }: { message: string }): void {
+    private onMessageDidRead({ message, dropped }: { message: string, dropped?: number }): void {
         const rawLines = message.split('\n');
         const lines: string[] = []
         let lastLine = this.state.lastLine;
@@ -336,6 +338,9 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
             }
         }
         lastLine = lines.pop() || '';
+        if (dropped) {
+            lastLine = `${lastLine}[DROPPED]\n`;
+        }
         const jsxLines = this.maxLineCount <= 1 ? [] : this.state.lines.concat(lines.map(line => <div key={v4()}>{line}</div>)).slice((this.maxLineCount - 1) * -1);
         this.setState({ lines: jsxLines, lastLine }, () => {
             if (this.props.monitorConnection.connected) {
@@ -364,4 +369,84 @@ export class SerialMonitorOutput extends React.Component<SerialMonitorOutput.Pro
 export interface SelectOption<T> {
     readonly label: string;
     readonly value: T;
+}
+
+@injectable()
+export class MonitorWidgetTabBarDecorator implements TabBarDecorator {
+
+    @inject(MonitorConnection)
+    protected readonly connection: MonitorConnection;
+
+    @inject(ArduinoPreferences)
+    protected readonly preferences: ArduinoPreferences;
+
+    protected readonly onDidChangeDecorationsEmitter = new Emitter<void>();
+    protected readonly maxHistory = 10;
+
+    protected rateLimiterBuffer: number;
+    protected history: number[] = [];
+    protected decoration: WidgetDecoration.Data = {};
+
+    @postConstruct()
+    protected init(): void {
+        this.rateLimiterBuffer = this.preferences['arduino.monitor.rateLimiterBuffer'];
+        this.connection.onRead(({ dropped }) => {
+            this.history.push(Math.floor(dropped / this.rateLimiterBuffer) * 100);
+            this.history = this.history.slice(this.maxHistory * -1);
+            this.refresh();
+        });
+        this.preferences.onPreferenceChanged(({ preferenceName, newValue, oldValue }) => {
+            if (preferenceName === 'arduino.monitor.rateLimiterBuffer' && newValue !== oldValue && typeof newValue === 'number' && newValue > 0) {
+                this.rateLimiterBuffer = newValue;
+                this.history = [];
+                this.refresh();
+            }
+        });
+    }
+
+    decorate(title: Title<Widget>): WidgetDecoration.Data[] {
+        if (this.decoration && title.owner.id === MonitorWidget.ID) {
+            return [
+                this.decoration
+            ];
+        }
+        return [];
+    }
+
+    private refresh(): void {
+        const percentage = Math.floor(this.history.reduce((prev, curr) => prev + curr, 0) / this.maxHistory);
+        let newDecoration: WidgetDecoration.Data;
+        if (!percentage) {
+            newDecoration = {
+            }
+        } else if (percentage < 25) {
+            newDecoration = {
+                badge: `${percentage}%` as any
+            }
+        } else if (percentage < 75) {
+            newDecoration = {
+                badge: `${percentage}%` as any,
+                backgroundColor: 'var(--theia-editorWarning-foreground)'
+            }
+        } else {
+            newDecoration = {
+                badge: `${percentage}%` as any,
+                backgroundColor: 'var(--theia-errorForeground)'
+            }
+        }
+        const didChange = newDecoration.badge !== this.decoration.badge || newDecoration.backgroundColor !== this.decoration.backgroundColor;
+        this.decoration = newDecoration;
+        if (didChange) {
+            this.onDidChangeDecorationsEmitter.fire();
+        }
+    }
+
+    get id(): string {
+        return 'monitor-widget-tabbar-decorator';
+    }
+
+    get onDidChangeDecorations(): Event<void> {
+        return this.onDidChangeDecorationsEmitter.event;
+    }
+
 }

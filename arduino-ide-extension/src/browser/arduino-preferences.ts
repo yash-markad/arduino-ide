@@ -52,8 +52,8 @@ export const ArduinoConfigSchema: PreferenceSchema = {
         'arduino.monitor.rateLimiterBuffer': {
             type: 'number',
             minimum: 0,
-            description: 'This parameter indicates how many kilobytes should be buffered on the CLI before dropping. If >0 then the CLI will enable a rate limiter and will send incoming data to the IDE only when the IDE allows it. Defaults to 10 KB',
-            default: 10
+            description: 'This parameter indicates how many bytes should be buffered on the CLI before dropping. If >0 then the CLI will enable a rate limiter and will send incoming data to the IDE only when the IDE allows it. Defaults to 10 KB',
+            default: 10_240
         }
     }
 };
