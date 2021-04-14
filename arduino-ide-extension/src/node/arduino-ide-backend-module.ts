@@ -36,10 +36,15 @@ import { BackendApplication } from './theia/core/backend-application';
 import { BoardDiscovery } from './board-discovery';
 import { DefaultGitInit } from './theia/git/git-init';
 import { GitInit } from '@theia/git/lib/node/init/git-init';
+import { CliNotificationService } from './cli-notification-service';
 
 export default new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(BackendApplication).toSelf().inSingletonScope();
     rebind(TheiaBackendApplication).toService(BackendApplication);
+
+    // Shared CLI notification service
+    bind(CliNotificationService).toSelf().inSingletonScope();
+    bind(BackendApplicationContribution).toService(CliNotificationService);
 
     // Shared config service
     bind(ConfigServiceImpl).toSelf().inSingletonScope();
