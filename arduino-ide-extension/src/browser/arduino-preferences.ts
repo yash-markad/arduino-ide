@@ -43,6 +43,11 @@ export const ArduinoConfigSchema: PreferenceSchema = {
             'type': 'boolean',
             'description': 'True to enable automatic update checks. The IDE will check for updates automatically and periodically.',
             'default': true
+        },
+        'arduino.sketchbook.showAllFiles': {
+            'type': 'boolean',
+            'description': 'True to show all sketch files inside the sketch. It is false by default.',
+            'default': false
         }
     }
 };
@@ -56,6 +61,7 @@ export interface ArduinoConfiguration {
     'arduino.window.autoScale': boolean;
     'arduino.window.zoomLevel': number;
     'arduino.ide.autoUpdate': boolean;
+    'arduino.sketchbook.showAllFiles': boolean;
 }
 
 export const ArduinoPreferences = Symbol('ArduinoPreferences');

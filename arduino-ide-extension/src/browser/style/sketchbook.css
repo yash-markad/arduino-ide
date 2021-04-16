@@ -1,0 +1,13 @@
+.sketchbook-tab-icon {
+    -webkit-mask: url('sketchbook.svg');
+    mask: url('sketchbook.svg');
+}
+
+.sketch-folder-icon {
+    -webkit-mask: url('sketch-folder-icon.svg');
+    mask: url('sketch-folder-icon.svg');
+}
+
+.sketchbook-trees-container {
+    height: 100%;
+}
