@@ -44,9 +44,8 @@
     // Clean up the `./electron/build` folder.
     shell.exec(`git -C ${path('..', 'build')} clean -ffxdq`, { async: false });
 
-    const extensions = [
-        'arduino-ide-extension'
-    ];
+    const extensions = require('./extensions.json');
+    echo(`Building the following extensions:\n${extensions.map(ext => `\t${ext}`).join(',\n')}`);
     const allDependencies = [
         ...extensions,
         'electron-app'
