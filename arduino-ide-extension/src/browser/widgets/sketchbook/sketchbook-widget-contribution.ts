@@ -8,6 +8,8 @@ import { MainMenuManager } from '../../../common/main-menu-manager';
 import { ArduinoPreferences } from '../../arduino-preferences';
 import { SketchbookWidget } from './sketchbook-widget';
 import { ArduinoMenus } from '../../menu/arduino-menus';
+import { SketchbookTree } from './sketchbook-tree';
+import { SketchbookCommands } from './sketchbook-commands';
 
 @injectable()
 export class SketchbookWidgetContribution extends AbstractViewContribution<SketchbookWidget> implements FrontendApplicationContribution {
@@ -57,6 +59,16 @@ export class SketchbookWidgetContribution extends AbstractViewContribution<Sketc
             execute: () => this.preferenceService.set('arduino.sketchbook.showAllFiles', false, PreferenceScope.User),
             isEnabled: () => this.arduinoPreferences['arduino.sketchbook.showAllFiles'],
             isVisible: () => this.arduinoPreferences['arduino.sketchbook.showAllFiles']
+        });
+        registry.registerCommand(SketchbookCommands.OPEN, {
+            execute: () => console.log('open sketch'),
+            isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
+            isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
+        });
+        registry.registerCommand(SketchbookCommands.OPEN_NEW_WINDOW, {
+            execute: () => console.log('open sketch in new window'),
+            isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
+            isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
         });
     }
 

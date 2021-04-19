@@ -1,9 +1,11 @@
 import { inject, injectable } from 'inversify';
+import { LabelProvider } from '@theia/core/lib/browser/label-provider';
+import { Command } from '@theia/core/lib/common/command';
 import { TreeNode, CompositeTreeNode } from '@theia/core/lib/browser/tree';
 import { DirNode, FileStatNode, FileTree } from '@theia/filesystem/lib/browser/file-tree';
-import { SketchesService } from '../../../common/protocol';
+import { Sketch, SketchesService } from '../../../common/protocol';
 import { FileStat } from '@theia/filesystem/lib/common/files';
-import { LabelProvider } from '@theia/core/lib/browser';
+import { SketchbookCommands } from './sketchbook-commands';
 
 @injectable()
 export class SketchbookTree extends FileTree {
@@ -39,8 +41,7 @@ export class SketchbookTree extends FileTree {
         if (DirNode.is(node)) {
             const sketch = await this.sketchesService.maybeLoadSketch(node.uri.toString());
             if (sketch) {
-                const sketchFiles = [sketch.mainFileUri, ...sketch.rootFolderFileUris];
-                Object.assign(node, { sketchFiles });
+                Object.assign(node, { sketch, commands: [SketchbookCommands.OPEN, SketchbookCommands.OPEN_NEW_WINDOW] });
                 if (!showAllFiles) {
                     delete (node as any).expanded;
                 }
@@ -70,12 +71,13 @@ export namespace SketchbookTree {
     }
 
     export interface SketchDirNode extends DirNode {
-        readonly sketchFiles: string[];
+        readonly sketch: Sketch;
+        readonly commands?: Command[];
     }
     export namespace SketchDirNode {
 
-        export function is(node: TreeNode & Partial<SketchDirNode>): node is SketchDirNode {
-            return Array.isArray(node.sketchFiles) && DirNode.is(node);
+        export function is(node: TreeNode & Partial<SketchDirNode> | undefined): node is SketchDirNode {
+            return !!node && Sketch.is(node.sketch) && DirNode.is(node);
         }
 
     }
