@@ -32,9 +32,9 @@ export class SketchbookTree extends FileTree {
             return children.filter(DirNode.is).filter(node => ['libraries', 'hardware'].indexOf(this.labelProvider.getName(node)) === -1);
         }
         if (SketchbookTree.SketchDirNode.is(parent)) {
-            return children.filter(FileStatNode.is); // .filter(({ uri }) => parent.sketchFiles.indexOf(uri.toString()) !== -1);
+            return children.filter(FileStatNode.is);
         }
-        return super.resolveChildren(parent);
+        return children.filter(DirNode.is);
     }
 
     private async maybeDecorateNode(node: TreeNode, showAllFiles: boolean): Promise<TreeNode> {

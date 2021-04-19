@@ -52,7 +52,7 @@ export class SketchbookTreeWidget extends FileTreeWidget {
 
     protected renderIcon(node: TreeNode, props: NodeProps): React.ReactNode {
         if (SketchbookTree.SketchDirNode.is(node)) {
-            return <div className='sketch-folder-icon'></div>;
+            return <div className='sketch-folder-icon file-icon'></div>;
         }
         const icon = this.toNodeIcon(node);
         if (icon) {
