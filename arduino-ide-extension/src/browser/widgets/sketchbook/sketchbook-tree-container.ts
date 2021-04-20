@@ -4,7 +4,7 @@ import { SketchbookTree } from './sketchbook-tree';
 import { SketchbookTreeModel } from './sketchbook-tree-model';
 import { SketchbookTreeWidget } from './sketchbook-tree-widget';
 
-function createSketchbookTreeContainer(parent: interfaces.Container): Container {
+export function createSketchbookTreeContainer(parent: interfaces.Container): Container {
     const child = createTreeContainer(parent);
 
     child.unbind(TreeImpl);
