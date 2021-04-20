@@ -42,10 +42,13 @@
     // rm -rf ../working-copy
     rm('-rf', path('..', workingCopy));
     // Clean up the `./electron/build` folder.
-    shell.exec(`git -C ${path('..', 'build')} clean -ffxdq`, { async: false });
+    const resourcesToKeep = ['patch', 'resources', 'scripts', 'template-package.json'];
+    for (const filename of fs.readdirSync(path('..', 'build')).filter(filename => resourcesToKeep.indexOf(filename) === -1)) {
+        rm('-rf', path('..', 'build', filename));
+    }
 
     const extensions = require('./extensions.json');
-    echo(`Building the following extensions:\n${extensions.map(ext => `\t${ext}`).join(',\n')}`);
+    echo(`Building the application with the following extensions:\n${extensions.map(ext => ` - ${ext}`).join(',\n')}`);
     const allDependencies = [
         ...extensions,
         'electron-app'
