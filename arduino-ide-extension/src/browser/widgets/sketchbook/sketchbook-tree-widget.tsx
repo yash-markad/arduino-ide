@@ -32,6 +32,9 @@ export class SketchbookTreeWidget extends FileTreeWidget {
     ) {
         super(props, model, contextMenuRenderer);
         this.id = 'arduino-sketchbook-tree-widget';
+        this.title.iconClass = 'sketchbook-tree-icon';
+        this.title.caption = 'Local Sketchbook';
+        this.title.closable = false;
     }
 
     @postConstruct()

@@ -1,11 +1,18 @@
 .sketchbook-tab-icon {
-    -webkit-mask: url('sketchbook.svg');
-    mask: url('sketchbook.svg');
+    -webkit-mask: url('./sketchbook.svg');
+    mask: url('./sketchbook.svg');
 }
 
 .sketch-folder-icon {
-    -webkit-mask: url('sketch-folder-icon.svg');
-    mask: url('sketch-folder-icon.svg');
+    background: url('./sketch-folder-icon.svg') center center no-repeat;
+    width: var(--theia-icon-size);
+    height: var(--theia-icon-size);
+}
+
+.sketchbook-tree-icon {
+    background: url('./sketchbook-tree-icon.svg') center center no-repeat;
+    width: var(--theia-icon-size);
+    height: var(--theia-icon-size);
 }
 
 .sketchbook-trees-container {
