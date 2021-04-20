@@ -10,6 +10,7 @@ import { SketchbookWidget } from './sketchbook-widget';
 import { ArduinoMenus } from '../../menu/arduino-menus';
 import { SketchbookTree } from './sketchbook-tree';
 import { SketchbookCommands } from './sketchbook-commands';
+import { WorkspaceService } from '../../theia/workspace/workspace-service';
 
 @injectable()
 export class SketchbookWidgetContribution extends AbstractViewContribution<SketchbookWidget> implements FrontendApplicationContribution {
@@ -22,6 +23,9 @@ export class SketchbookWidgetContribution extends AbstractViewContribution<Sketc
 
     @inject(MainMenuManager)
     protected readonly mainMenuManager: MainMenuManager;
+
+    @inject(WorkspaceService)
+    protected readonly workspaceService: WorkspaceService;
 
     constructor() {
         super({
@@ -61,12 +65,12 @@ export class SketchbookWidgetContribution extends AbstractViewContribution<Sketc
             isVisible: () => this.arduinoPreferences['arduino.sketchbook.showAllFiles']
         });
         registry.registerCommand(SketchbookCommands.OPEN, {
-            execute: () => console.log('open sketch'),
+            execute: (arg) => this.workspaceService.open(arg.uri, { preserveWindow: true }),
             isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
             isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
         });
         registry.registerCommand(SketchbookCommands.OPEN_NEW_WINDOW, {
-            execute: () => console.log('open sketch in new window'),
+            execute: (arg) => this.workspaceService.open(arg.uri),
             isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
             isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
         });
