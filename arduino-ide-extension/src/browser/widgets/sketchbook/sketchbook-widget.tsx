@@ -23,9 +23,7 @@ export class SketchbookWidget extends BaseWidget {
         this.title.iconClass = 'sketchbook-tab-icon';
         this.title.closable = true;
         this.node.tabIndex = 0;
-        this.sketchbookTreesContainer = new NoopDragOverDockPanel({ spacing: 0, mode: 'single-document' });
-        this.sketchbookTreesContainer.addClass('sketchbook-trees-container');
-        this.sketchbookTreesContainer.node.tabIndex = -1;
+        this.sketchbookTreesContainer = this.createTreesContainer();
     }
 
     @postConstruct()
@@ -63,9 +61,16 @@ export class SketchbookWidget extends BaseWidget {
         this.onResize(Widget.ResizeMessage.UnknownSize);
     }
 
+    protected createTreesContainer(): DockPanel {
+        const panel = new NoopDragOverDockPanel({ spacing: 0, mode: 'single-document' });
+        panel.addClass('sketchbook-trees-container');
+        panel.node.tabIndex = -1;
+        return panel;
+    }
+
 }
 
-class NoopDragOverDockPanel extends DockPanel {
+export class NoopDragOverDockPanel extends DockPanel {
 
     constructor(options?: DockPanel.IOptions) {
         super(options);
