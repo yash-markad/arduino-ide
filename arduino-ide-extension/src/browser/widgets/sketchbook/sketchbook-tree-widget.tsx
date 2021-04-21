@@ -1,13 +1,12 @@
 import * as React from 'react';
 import { inject, injectable, postConstruct } from 'inversify';
-import URI from '@theia/core/lib/common/uri';
 import { TreeNode } from '@theia/core/lib/browser/tree/tree';
 import { CommandRegistry } from '@theia/core/lib/common/command';
 import { NodeProps, TreeProps, TREE_NODE_SEGMENT_CLASS, TREE_NODE_TAIL_CLASS } from '@theia/core/lib/browser/tree/tree-widget';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { FileTreeWidget } from '@theia/filesystem/lib/browser';
 import { ContextMenuRenderer } from '@theia/core/lib/browser/context-menu-renderer';
-import { ConfigService } from '../../../common/protocol';
+import { Config, ConfigService } from '../../../common/protocol';
 import { SketchbookTree } from './sketchbook-tree';
 import { SketchbookTreeModel } from './sketchbook-tree-model';
 import { ArduinoPreferences } from '../../arduino-preferences';
@@ -40,7 +39,7 @@ export class SketchbookTreeWidget extends FileTreeWidget {
     @postConstruct()
     protected async init(): Promise<void> {
         super.init();
-        const setInput = () => this.configService.getConfiguration().then(({ sketchDirUri }) => this.initialize({ sketchDirUri }));
+        const setInput = () => this.configService.getConfiguration().then(config => this.initialize({ config }));
         this.toDispose.push(this.arduinoPreferences.onPreferenceChanged(({ preferenceName }) => {
             if (preferenceName === 'arduino.sketchbook.showAllFiles') {
                 this.init();
@@ -49,7 +48,7 @@ export class SketchbookTreeWidget extends FileTreeWidget {
         setInput();
     }
 
-    async initialize(options: { sketchDirUri: URI | string }): Promise<void> {
+    async initialize(options: { config: Config }): Promise<void> {
         return this.model.initialize(options);
     }
 
