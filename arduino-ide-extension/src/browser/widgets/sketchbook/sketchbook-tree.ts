@@ -3,7 +3,7 @@ import { LabelProvider } from '@theia/core/lib/browser/label-provider';
 import { Command } from '@theia/core/lib/common/command';
 import { TreeNode, CompositeTreeNode } from '@theia/core/lib/browser/tree';
 import { DirNode, FileStatNode, FileTree } from '@theia/filesystem/lib/browser/file-tree';
-import { Sketch, SketchesService } from '../../../common/protocol';
+import { SketchesService } from '../../../common/protocol';
 import { FileStat } from '@theia/filesystem/lib/common/files';
 import { SketchbookCommands } from './sketchbook-commands';
 
@@ -37,11 +37,11 @@ export class SketchbookTree extends FileTree {
         return children.filter(DirNode.is);
     }
 
-    private async maybeDecorateNode(node: TreeNode, showAllFiles: boolean): Promise<TreeNode> {
+    protected async maybeDecorateNode(node: TreeNode, showAllFiles: boolean): Promise<TreeNode> {
         if (DirNode.is(node)) {
             const sketch = await this.sketchesService.maybeLoadSketch(node.uri.toString());
             if (sketch) {
-                Object.assign(node, { sketch, commands: [SketchbookCommands.OPEN, SketchbookCommands.OPEN_NEW_WINDOW] });
+                Object.assign(node, { type: 'sketch', commands: [SketchbookCommands.OPEN, SketchbookCommands.OPEN_NEW_WINDOW] });
                 if (!showAllFiles) {
                     delete (node as any).expanded;
                 }
@@ -71,13 +71,13 @@ export namespace SketchbookTree {
     }
 
     export interface SketchDirNode extends DirNode {
-        readonly sketch: Sketch;
+        readonly type: 'sketch';
         readonly commands?: Command[];
     }
     export namespace SketchDirNode {
 
         export function is(node: TreeNode & Partial<SketchDirNode> | undefined): node is SketchDirNode {
-            return !!node && Sketch.is(node.sketch) && DirNode.is(node);
+            return !!node && node.type === 'sketch' && DirNode.is(node);
         }
 
     }
