@@ -6,7 +6,6 @@ import { NodeProps, TreeProps, TREE_NODE_SEGMENT_CLASS, TREE_NODE_TAIL_CLASS } f
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { FileTreeWidget } from '@theia/filesystem/lib/browser';
 import { ContextMenuRenderer } from '@theia/core/lib/browser/context-menu-renderer';
-import { Config, ConfigService } from '../../../common/protocol';
 import { SketchbookTree } from './sketchbook-tree';
 import { SketchbookTreeModel } from './sketchbook-tree-model';
 import { ArduinoPreferences } from '../../arduino-preferences';
@@ -16,9 +15,6 @@ export class SketchbookTreeWidget extends FileTreeWidget {
 
     @inject(CommandRegistry)
     protected readonly commandRegistry: CommandRegistry;
-
-    @inject(ConfigService)
-    protected readonly configService: ConfigService;
 
     @inject(ArduinoPreferences)
     protected readonly arduinoPreferences: ArduinoPreferences;
@@ -39,17 +35,16 @@ export class SketchbookTreeWidget extends FileTreeWidget {
     @postConstruct()
     protected async init(): Promise<void> {
         super.init();
-        const setInput = () => this.configService.getConfiguration().then(config => this.initialize({ config }));
         this.toDispose.push(this.arduinoPreferences.onPreferenceChanged(({ preferenceName }) => {
             if (preferenceName === 'arduino.sketchbook.showAllFiles') {
-                this.init();
+                this.updateModel();
             }
         }));
-        setInput();
+        this.updateModel();
     }
 
-    async initialize(options: { config: Config }): Promise<void> {
-        return this.model.initialize(options);
+    async updateModel(): Promise<void> {
+        return this.model.updateRoot();
     }
 
     protected renderIcon(node: TreeNode, props: NodeProps): React.ReactNode {
