@@ -70,6 +70,7 @@
     "lodash.debounce": "^4.0.8",
     "ncp": "^2.0.0",
     "node-fetch": "^2.6.1",
+    "open": "^8.0.6",
     "p-queue": "^5.0.0",
     "ps-tree": "^1.2.0",
     "react-disable": "^0.1.0",
