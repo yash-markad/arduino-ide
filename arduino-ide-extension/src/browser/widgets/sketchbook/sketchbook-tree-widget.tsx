@@ -86,16 +86,17 @@ export class SketchbookTreeWidget extends FileTreeWidget {
         return undefined;
     }
 
-    protected renderInlineCommand(commandId: string, arg: SketchbookTree.SketchDirNode): React.ReactNode {
+    protected renderInlineCommand(commandId: string, node: SketchbookTree.SketchDirNode): React.ReactNode {
         const command = this.commandRegistry.getCommand(commandId);
         const icon = command?.iconClass;
-        if (command && icon && this.commandRegistry.isEnabled(commandId, arg) && this.commandRegistry.isVisible(commandId, arg)) {
+        const args = { model: this.model, node: node };
+        if (command && icon && this.commandRegistry.isEnabled(commandId, args) && this.commandRegistry.isVisible(commandId, args)) {
             const className = [TREE_NODE_SEGMENT_CLASS, TREE_NODE_TAIL_CLASS, icon, 'theia-tree-view-inline-action'].join(' ');
             return <div
-                key={`${commandId}--${arg.id}`}
+                key={`${commandId}--${node.id}`}
                 className={className}
                 title={command?.label || command.id}
-                onClick={() => this.commandRegistry.executeCommand(commandId, arg)}
+                onClick={event => this.commandRegistry.executeCommand(commandId, Object.assign(args, { event }))}
             />;
         }
         return undefined;

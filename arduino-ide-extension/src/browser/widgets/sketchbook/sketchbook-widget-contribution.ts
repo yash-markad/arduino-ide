@@ -65,14 +65,14 @@ export class SketchbookWidgetContribution extends AbstractViewContribution<Sketc
             isVisible: () => this.arduinoPreferences['arduino.sketchbook.showAllFiles']
         });
         registry.registerCommand(SketchbookCommands.OPEN, {
-            execute: (arg) => this.workspaceService.open(arg.uri, { preserveWindow: true }),
-            isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
-            isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
+            execute: arg => this.workspaceService.open(arg.node.uri, { preserveWindow: true }),
+            isEnabled: arg => !!arg && 'node' in arg && SketchbookTree.SketchDirNode.is(arg.node),
+            isVisible: arg => !!arg && 'node' in arg && SketchbookTree.SketchDirNode.is(arg.node)
         });
         registry.registerCommand(SketchbookCommands.OPEN_NEW_WINDOW, {
-            execute: (arg) => this.workspaceService.open(arg.uri),
-            isEnabled: (arg) => SketchbookTree.SketchDirNode.is(arg),
-            isVisible: (arg) => SketchbookTree.SketchDirNode.is(arg),
+            execute: arg => this.workspaceService.open(arg.node.uri),
+            isEnabled: arg => !!arg && 'node' in arg && SketchbookTree.SketchDirNode.is(arg.node),
+            isVisible: arg => !!arg && 'node' in arg && SketchbookTree.SketchDirNode.is(arg.node)
         });
     }
 
