@@ -96,7 +96,11 @@ export class SketchbookTreeWidget extends FileTreeWidget {
                 key={`${commandId}--${node.id}`}
                 className={className}
                 title={command?.label || command.id}
-                onClick={event => this.commandRegistry.executeCommand(commandId, Object.assign(args, { event }))}
+                onClick={event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this.commandRegistry.executeCommand(commandId, Object.assign(args, { event: event.nativeEvent }))
+                }}
             />;
         }
         return undefined;
