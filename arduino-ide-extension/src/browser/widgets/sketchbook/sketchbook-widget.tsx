@@ -9,7 +9,6 @@ import { SketchbookTreeWidget } from './sketchbook-tree-widget';
 
 @injectable()
 export class SketchbookWidget extends BaseWidget {
-
     @inject(SketchbookTreeWidget)
     protected readonly localSketchbookTreeWidget: SketchbookTreeWidget;
 
@@ -31,10 +30,18 @@ export class SketchbookWidget extends BaseWidget {
         this.sketchbookTreesContainer.addWidget(this.localSketchbookTreeWidget);
     }
 
+    public getTreeWidget(): SketchbookTreeWidget {
+        return this.localSketchbookTreeWidget;
+    }
+
     protected onAfterAttach(message: Message): void {
         super.onAfterAttach(message);
         Widget.attach(this.sketchbookTreesContainer, this.node);
-        this.toDisposeOnDetach.push(Disposable.create(() => Widget.detach(this.sketchbookTreesContainer)));
+        this.toDisposeOnDetach.push(
+            Disposable.create(() =>
+                Widget.detach(this.sketchbookTreesContainer)
+            )
+        );
     }
 
     protected onActivateRequest(message: Message): void {
@@ -50,7 +57,10 @@ export class SketchbookWidget extends BaseWidget {
 
     protected onResize(message: Widget.ResizeMessage): void {
         super.onResize(message);
-        MessageLoop.sendMessage(this.sketchbookTreesContainer, Widget.ResizeMessage.UnknownSize);
+        MessageLoop.sendMessage(
+            this.sketchbookTreesContainer,
+            Widget.ResizeMessage.UnknownSize
+        );
         for (const widget of toArray(this.sketchbookTreesContainer.widgets())) {
             MessageLoop.sendMessage(widget, Widget.ResizeMessage.UnknownSize);
         }
@@ -62,24 +72,25 @@ export class SketchbookWidget extends BaseWidget {
     }
 
     protected createTreesContainer(): DockPanel {
-        const panel = new NoopDragOverDockPanel({ spacing: 0, mode: 'single-document' });
+        const panel = new NoopDragOverDockPanel({
+            spacing: 0,
+            mode: 'single-document',
+        });
         panel.addClass('sketchbook-trees-container');
         panel.node.tabIndex = -1;
         return panel;
     }
-
 }
 
 export class NoopDragOverDockPanel extends DockPanel {
-
     constructor(options?: DockPanel.IOptions) {
         super(options);
-        NoopDragOverDockPanel.prototype['_evtDragOver'] = (event: IDragEvent) => {
+        NoopDragOverDockPanel.prototype['_evtDragOver'] = (
+            event: IDragEvent
+        ) => {
             event.preventDefault();
             event.stopPropagation();
             event.dropAction = 'none';
         };
     }
-
 }
-
